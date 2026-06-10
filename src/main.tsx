@@ -23,6 +23,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
         <Route path="/register" element={<Register />} />
 
+        <Route path="/simulador" element={<SimuladorVehicular />} />
+
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

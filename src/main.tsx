@@ -6,6 +6,7 @@ import App from './App'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Register from './pages/Register'
+import SimuladorVehicular from './pages/Simulador'
 
 import './index.css'
 

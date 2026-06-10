@@ -1,0 +1,253 @@
+/* ================================================================
+   Simulador.css — solo lo que NO está en Dashboard.css
+   Fuente, colores y tamaños: heredados del Dashboard
+   ================================================================ */
+
+/* Formulario — 3 columnas igual que .stats */
+.sim-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+/* Cabecera de cada card — igual al panel-header pero sin botón */
+.sim-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* Anula el margin-bottom: 18px que .panel h3 pone por defecto */
+.sim-card-header h3 {
+  margin: 0;
+  font-size: 15px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Campo */
+.sim-field {
+  margin-bottom: 14px;
+}
+
+.sim-field label {
+  display: block;
+  font-size: 13px;          /* igual a .stat-card p / .table-panel td */
+  color: #475569;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+/* Input group con prefijo/sufijo */
+.sim-ig {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  transition: border-color .15s;
+}
+
+.sim-ig:focus-within {
+  border-color: #2563eb;
+}
+
+.sim-ig input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 9px 11px;
+  font-size: 14px;           /* igual al texto base del Dashboard */
+  color: #0f172a;
+  min-width: 0;
+  font-family: inherit;
+}
+
+.sim-pre {
+  padding: 9px 9px 9px 12px;
+  font-size: 13px;
+  color: #94a3b8;
+  background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.sim-suf {
+  padding: 9px 11px;
+  font-size: 13px;
+  color: #2563eb;
+  background: #eff6ff;
+  border-left: 1px solid #dbeafe;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Select */
+.sim-sel {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #fff;
+  outline: none;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+
+.sim-sel:focus { border-color: #2563eb; }
+
+/* Input suelto (plazo numérico) */
+.sim-solo {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #fff;
+  outline: none;
+  font-family: inherit;
+  transition: border-color .15s;
+}
+
+.sim-solo:focus { border-color: #2563eb; }
+
+/* Total costos */
+.sim-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  margin-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+  font-size: 13px;
+  color: #475569;
+}
+
+.sim-total-row strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+/* Botón — mismo gradiente que .menu a.active */
+.sim-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 13px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 14px rgba(37,99,235,.35);
+  font-family: inherit;
+  transition: opacity .15s;
+}
+
+.sim-btn:hover { opacity: .9; }
+
+/* Panel resultados */
+.sim-results-panel {
+  margin-top: 24px;
+}
+
+/* Tabs */
+.sim-tabs {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 20px;
+}
+
+.sim-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 22px;
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: -1px;
+  font-family: inherit;
+  transition: color .15s;
+}
+
+.sim-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  font-weight: 600;
+}
+
+.sim-tab:hover:not(.active) { color: #0f172a; }
+
+/* Grid resumen 2 columnas */
+.sim-resumen-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.sim-resumen-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.sim-rl {
+  font-size: 13px;
+  color: #475569;
+}
+
+.sim-rv {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Tabla cronograma */
+.sim-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;       /* igual a .table-panel td */
+}
+
+.sim-table th {
+  background: #0f172a;
+  color: #93c5fd;
+  padding: 11px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.sim-table td {
+  padding: 10px 14px;
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.sim-table tbody tr:hover { background: #f0f7ff; }
+.sim-alt { background: #f8fafc; }
+.sim-red   { color: #dc2626; }
+.sim-green { color: #16a34a; }
+
+/* Las stats debajo del botón no necesitan margin-top extra */
+.stats { margin-top: 0; }

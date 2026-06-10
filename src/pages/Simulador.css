@@ -1,9 +1,4 @@
-/* ================================================================
-   Simulador.css — solo lo que NO está en Dashboard.css
-   Fuente, colores y tamaños: heredados del Dashboard
-   ================================================================ */
 
-/* Formulario — 3 columnas igual que .stats */
 .sim-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -12,7 +7,6 @@
   margin-bottom: 20px;
 }
 
-/* Cabecera de cada card — igual al panel-header pero sin botón */
 .sim-card-header {
   display: flex;
   align-items: center;
@@ -22,7 +16,6 @@
   border-bottom: 1px solid #f1f5f9;
 }
 
-/* Anula el margin-bottom: 18px que .panel h3 pone por defecto */
 .sim-card-header h3 {
   margin: 0;
   font-size: 15px;
@@ -37,13 +30,13 @@
 
 .sim-field label {
   display: block;
-  font-size: 13px;          /* igual a .stat-card p / .table-panel td */
+  font-size: 13px;
   color: #475569;
   font-weight: 500;
   margin-bottom: 5px;
 }
 
-/* Input group con prefijo/sufijo */
+
 .sim-ig {
   display: flex;
   align-items: center;
@@ -64,7 +57,7 @@
   outline: none;
   background: transparent;
   padding: 9px 11px;
-  font-size: 14px;           /* igual al texto base del Dashboard */
+  font-size: 14px;
   color: #0f172a;
   min-width: 0;
   font-family: inherit;
@@ -138,7 +131,6 @@
   font-size: 14px;
 }
 
-/* Botón — mismo gradiente que .menu a.active */
 .sim-btn {
   display: inline-flex;
   align-items: center;
@@ -193,7 +185,6 @@
 
 .sim-tab:hover:not(.active) { color: #0f172a; }
 
-/* Grid resumen 2 columnas */
 .sim-resumen-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -224,7 +215,7 @@
 .sim-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;       /* igual a .table-panel td */
+  font-size: 13px;
 }
 
 .sim-table th {
@@ -249,5 +240,4 @@
 .sim-red   { color: #dc2626; }
 .sim-green { color: #16a34a; }
 
-/* Las stats debajo del botón no necesitan margin-top extra */
 .stats { margin-top: 0; }

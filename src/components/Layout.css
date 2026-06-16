@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
-  background: var(--bg-gradient);
+  background: #050010;
   transition: grid-template-columns var(--transition);
 }
 
@@ -260,19 +260,7 @@
   padding: 24px 28px 48px;
   min-height: 100vh;
   position: relative;
-  background-image: url('/bg-main.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-}
-
-.main::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(5, 10, 8, 0.65);
-  pointer-events: none;
-  z-index: 0;
+  background: transparent;
 }
 
 .header {

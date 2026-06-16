@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -23,6 +23,26 @@ export const CURRENT_USER = {
   email: 'admin@valorazul.com',
   role: 'Administrador' as const,
 };
+
+interface Meteor {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  length: number;
+}
+
+function spawnMeteor(width: number): Meteor {
+  const speed = 4 + Math.random() * 4;
+  const angle = Math.PI / 4 + (Math.random() - 0.5) * 0.35;
+  return {
+    x: Math.random() * width,
+    y: -80 - Math.random() * 120,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    length: 80 + Math.random() * 70,
+  };
+}
 
 interface NavItem {
   to: string;
@@ -55,6 +75,104 @@ function Layout({ title, subtitle, children }: LayoutProps) {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    const stars: { x: number; y: number; r: number; opacity: number }[] = [];
+    let meteors: Meteor[] = [];
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    for (let i = 0; i < 200; i++) {
+      stars.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.4 + 0.3,
+        opacity: Math.random() * 0.7 + 0.3,
+      });
+    }
+
+    for (let i = 0; i < 15; i++) {
+      meteors.push(spawnMeteor(window.innerWidth));
+    }
+
+    const draw = () => {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const nebula = ctx.createRadialGradient(w * 0.4, h * 0.35, 0, w * 0.5, h * 0.5, w * 0.85);
+      nebula.addColorStop(0, '#6b21a8');
+      nebula.addColorStop(0.15, '#581c87');
+      nebula.addColorStop(0.35, '#3b0764');
+      nebula.addColorStop(0.55, '#1e0533');
+      nebula.addColorStop(0.75, '#0d0120');
+      nebula.addColorStop(1, '#050010');
+      ctx.fillStyle = nebula;
+      ctx.fillRect(0, 0, w, h);
+
+      const nebula2 = ctx.createRadialGradient(w * 0.7, h * 0.3, 0, w * 0.7, h * 0.3, w * 0.4);
+      nebula2.addColorStop(0, 'rgba(139,92,246,0.3)');
+      nebula2.addColorStop(1, 'rgba(139,92,246,0)');
+      ctx.fillStyle = nebula2;
+      ctx.fillRect(0, 0, w, h);
+
+      for (const s of stars) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${s.opacity})`;
+        ctx.fill();
+      }
+
+      meteors = meteors.map((m) => {
+        const nx = m.x + m.vx;
+        const ny = m.y + m.vy;
+        const tailX = m.x - Math.cos(Math.atan2(m.vy, m.vx)) * m.length;
+        const tailY = m.y - Math.sin(Math.atan2(m.vy, m.vx)) * m.length;
+
+        const grad = ctx.createLinearGradient(tailX, tailY, m.x, m.y);
+        grad.addColorStop(0, 'rgba(180,150,255,0)');
+        grad.addColorStop(1, 'rgba(220,210,255,1)');
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(m.x, m.y);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        const headGlow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, 6);
+        headGlow.addColorStop(0, 'rgba(230,220,255,0.95)');
+        headGlow.addColorStop(1, 'rgba(180,150,255,0)');
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = headGlow;
+        ctx.fill();
+
+        if (nx > w + 100 || ny > h + 100) return spawnMeteor(w);
+        return { ...m, x: nx, y: ny };
+      });
+
+      animId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
 
   const visibleConfigNav = configNav.filter(
     (item) => item.to !== '/usuarios' || CURRENT_USER.role === 'Administrador'
@@ -136,6 +254,10 @@ function Layout({ title, subtitle, children }: LayoutProps) {
       {mobileOpen && <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
 
       <main className="main">
+        <canvas
+          ref={canvasRef}
+          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 0, pointerEvents: 'none' }}
+        />
         <header className="header">
           <div className="header-left">
             <button className="icon-btn menu-toggle" onClick={() => setMobileOpen(true)}>

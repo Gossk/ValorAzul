@@ -197,88 +197,104 @@ function Layout({ title, subtitle, children }: LayoutProps) {
   };
 
   return (
-    <div className={`app-layout ${collapsed ? 'sidebar-collapsed' : ''}`}>
-      <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
-        <div>
-          <div className="brand">
-            <div className="logo-container">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="sidebarLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#818CF8" />
-                    <stop offset="50%" stopColor="#6366F1" />
-                    <stop offset="100%" stopColor="#3B82F6" />
-                  </linearGradient>
-                </defs>
-                <path d="M2 4 L16 28 L30 4 L24 4 L16 18 L8 4 Z" fill="url(#sidebarLogoGrad)" />
-              </svg>
-              <div className="logo-text">
-                <span className="logo-name">VALOR</span>
-                <span className="logo-sub">AZUL</span>
+    <>
+      {/* Canvas fuera del grid — z-index 0 en el root stacking context */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Grid principal — z-index 1 en el root, siempre encima del canvas */}
+      <div
+        className={`app-layout ${collapsed ? 'sidebar-collapsed' : ''}`}
+        style={{ position: 'relative', zIndex: 1 }}
+      >
+        <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
+          <div>
+            <div className="brand">
+              <div className="logo-container">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="sidebarLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#818CF8" />
+                      <stop offset="50%" stopColor="#6366F1" />
+                      <stop offset="100%" stopColor="#3B82F6" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M2 4 L16 28 L30 4 L24 4 L16 18 L8 4 Z" fill="url(#sidebarLogoGrad)" />
+                </svg>
+                <div className="logo-text">
+                  <span className="logo-name">VALOR</span>
+                  <span className="logo-sub">AZUL</span>
+                </div>
+              </div>
+              <button className="mobile-close" onClick={() => setMobileOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="menu-title">PRINCIPAL</p>
+            <nav className="menu">{mainNav.map(renderLink)}</nav>
+
+            <p className="menu-title config">CONFIGURACIÓN</p>
+            <nav className="menu">{visibleConfigNav.map(renderLink)}</nav>
+          </div>
+
+          <div className="sidebar-footer">
+            <button className="collapse-btn" onClick={() => setCollapsed((c) => !c)} title="Colapsar menú">
+              {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+              <span className="link-label">Colapsar</span>
+            </button>
+
+            <div className="user-box" data-tooltip={CURRENT_USER.name}>
+              <div className="avatar">{CURRENT_USER.name.charAt(0)}</div>
+              <div className="link-label">
+                <strong>{CURRENT_USER.name}</strong>
+                <p>{CURRENT_USER.email}</p>
+              </div>
+              <button className="logout-btn link-label" onClick={() => navigate('/')} title="Cerrar sesión">
+                <LogOut size={16} />
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        {mobileOpen && <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
+
+        <main className="main">
+          <header className="header">
+            <div className="header-left">
+              <button className="icon-btn menu-toggle" onClick={() => setMobileOpen(true)}>
+                <Menu size={22} />
+              </button>
+              <div>
+                <h1>{title}</h1>
+                <p>{subtitle}</p>
               </div>
             </div>
-            <button className="mobile-close" onClick={() => setMobileOpen(false)}>
-              <X size={20} />
-            </button>
-          </div>
 
-          <p className="menu-title">PRINCIPAL</p>
-          <nav className="menu">{mainNav.map(renderLink)}</nav>
-
-          <p className="menu-title config">CONFIGURACIÓN</p>
-          <nav className="menu">{visibleConfigNav.map(renderLink)}</nav>
-        </div>
-
-        <div className="sidebar-footer">
-          <button className="collapse-btn" onClick={() => setCollapsed((c) => !c)} title="Colapsar menú">
-            {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
-            <span className="link-label">Colapsar</span>
-          </button>
-
-          <div className="user-box" data-tooltip={`${CURRENT_USER.name}`}>
-            <div className="avatar">{CURRENT_USER.name.charAt(0)}</div>
-            <div className="link-label">
-              <strong>{CURRENT_USER.name}</strong>
-              <p>{CURRENT_USER.email}</p>
+            <div className="header-actions">
+              <button className="icon-btn">
+                <Bell size={20} />
+                <span className="ping"></span>
+              </button>
+              <div className="admin-avatar">{CURRENT_USER.name.charAt(0)}</div>
+              <span className="header-user">{CURRENT_USER.name}</span>
             </div>
-            <button className="logout-btn link-label" onClick={() => navigate('/')} title="Cerrar sesión">
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </aside>
+          </header>
 
-      {mobileOpen && <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
-
-      <main className="main" style={{ position: 'relative', zIndex: 1 }}>
-        <canvas
-          ref={canvasRef}
-          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 0, pointerEvents: 'none' }}
-        />
-        <header className="header" style={{ position: 'relative', zIndex: 2 }}>
-          <div className="header-left">
-            <button className="icon-btn menu-toggle" onClick={() => setMobileOpen(true)}>
-              <Menu size={22} />
-            </button>
-            <div>
-              <h1>{title}</h1>
-              <p>{subtitle}</p>
-            </div>
-          </div>
-
-          <div className="header-actions">
-            <button className="icon-btn">
-              <Bell size={20} />
-              <span className="ping"></span>
-            </button>
-            <div className="admin-avatar">{CURRENT_USER.name.charAt(0)}</div>
-            <span className="header-user">{CURRENT_USER.name}</span>
-          </div>
-        </header>
-
-        <div className="page-content" style={{ position: 'relative', zIndex: 2 }}>{children}</div>
-      </main>
-    </div>
+          <div className="page-content">{children}</div>
+        </main>
+      </div>
+    </>
   );
 }
 

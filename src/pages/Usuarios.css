@@ -1,0 +1,91 @@
+.usuarios-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.usuarios-header h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.usuarios-header p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.panel {
+  padding: 20px;
+}
+
+.usuarios-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.usuarios-table th {
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.usuarios-table td {
+  padding: 14px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.usuarios-table tr.row-even {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.usuarios-table tr:hover {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.usuario-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ACCESS DENIED */
+
+.access-denied {
+  text-align: center;
+  padding: 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+}
+
+.access-denied svg {
+  color: #f87171;
+  margin-bottom: 8px;
+}
+
+.access-denied h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+@media (max-width: 700px) {
+  .usuarios-table {
+    font-size: 12px;
+  }
+
+  .usuarios-table th:nth-child(2),
+  .usuarios-table td:nth-child(2) {
+    display: none;
+  }
+}

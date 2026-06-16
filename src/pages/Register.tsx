@@ -5,7 +5,7 @@ function Register() {
   const navigate = useNavigate()
 
   return (
-    <div className="login-page">
+    <div className="auth-page">
       <div className="login-card register-card">
         <div className="login-logo">V</div>
 

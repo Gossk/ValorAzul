@@ -2,11 +2,15 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
-import App from './App'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Register from './pages/Register'
-import SimuladorVehicular from './pages/Simulador'
+import Clientes from './pages/Clientes'
+import Simulador from './pages/Simulador'
+import Historial from './pages/Historial'
+import Ayuda from './pages/Ayuda'
+import Usuarios from './pages/Usuarios'
+import Configuracion from './pages/Configuracion'
 
 import './index.css'
 
@@ -19,11 +23,19 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
         <Route path="/dashboard" element={<Dashboard />} />
 
-        <Route path="/clientes" element={<App />} />
+        <Route path="/clientes" element={<Clientes />} />
+
+        <Route path="/simulador" element={<Simulador />} />
+
+        <Route path="/historial" element={<Historial />} />
+
+        <Route path="/ayuda" element={<Ayuda />} />
+
+        <Route path="/usuarios" element={<Usuarios />} />
+
+        <Route path="/configuracion" element={<Configuracion />} />
 
         <Route path="/register" element={<Register />} />
-
-        <Route path="/simulador" element={<SimuladorVehicular />} />
 
       </Routes>
     </BrowserRouter>

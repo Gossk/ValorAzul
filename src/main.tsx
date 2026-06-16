@@ -22,12 +22,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        {/* Simulador tiene su propio layout interno — va fuera del wrapper */}
+        <Route path="/simulador" element={<Simulador />} />
 
-        {/* Rutas protegidas con Layout como wrapper (Outlet) */}
+        {/* Rutas con Layout compartido (Outlet) */}
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/clientes" element={<Clientes />} />
-          <Route path="/simulador" element={<Simulador />} />
           <Route path="/historial" element={<Historial />} />
           <Route path="/ayuda" element={<Ayuda />} />
           <Route path="/usuarios" element={<Usuarios />} />

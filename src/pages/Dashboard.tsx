@@ -19,7 +19,6 @@ import {
   Cell,
 } from 'recharts';
 
-import Layout from '../components/Layout';
 import { estadoSimulaciones, historial, simulacionesPorMes } from '../data/mockData';
 import './Dashboard.css';
 
@@ -34,7 +33,7 @@ const badgeClass: Record<string, string> = {
 
 function Dashboard() {
   return (
-    <Layout title="Dashboard" subtitle="Resumen general del sistema">
+    <>
       <div className="date-box">
         <Calendar size={17} />
         15 de junio, 2026
@@ -195,7 +194,7 @@ function Dashboard() {
           <div className="activity"><CircleDollarSign size={20} /><div><b>Crédito aprobado</b><p>Juan Pérez - S/ 85,000</p></div><small>Hace 40 min</small></div>
         </div>
       </section>
-    </Layout>
+    </>
   );
 }
 

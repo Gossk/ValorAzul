@@ -10,7 +10,6 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-import Layout from '../components/Layout';
 import { historial, simulacionesPorMes, type EstadoSimulacion } from '../data/mockData';
 import './Historial.css';
 
@@ -64,7 +63,7 @@ function Historial() {
   };
 
   return (
-    <Layout title="Historial" subtitle="Registro de simulaciones y créditos">
+    <>
       <div className="historial-filters fade-in">
         <div className="filter-group">
           <label>Desde</label>
@@ -178,7 +177,7 @@ function Historial() {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 }
 

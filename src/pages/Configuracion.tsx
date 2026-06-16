@@ -10,7 +10,7 @@ import {
   User,
 } from 'lucide-react';
 
-import Layout, { CURRENT_USER } from '../components/Layout';
+import { CURRENT_USER } from '../components/Layout';
 import './Configuracion.css';
 
 type Tab = 'perfil' | 'empresa' | 'notificaciones' | 'seguridad';
@@ -47,7 +47,7 @@ function Configuracion() {
   };
 
   return (
-    <Layout title="Configuración" subtitle="Administra tu perfil, empresa y preferencias">
+    <>
       <div className="config-tabs fade-in">
         {tabs.map((t) => {
           const Icon = t.icon;
@@ -180,7 +180,7 @@ function Configuracion() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }
 

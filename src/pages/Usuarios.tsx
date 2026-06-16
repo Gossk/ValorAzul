@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, ShieldAlert, X } from 'lucide-react';
 
-import Layout, { CURRENT_USER } from '../components/Layout';
+import { CURRENT_USER } from '../components/Layout';
 import { usuarios as initialUsuarios, type Usuario } from '../data/mockData';
 import './Usuarios.css';
 
@@ -22,13 +22,11 @@ function Usuarios() {
 
   if (CURRENT_USER.role !== 'Administrador') {
     return (
-      <Layout title="Usuarios" subtitle="Gestión de usuarios del sistema">
-        <div className="panel glass-card access-denied fade-in">
-          <ShieldAlert size={40} className="glow" />
-          <h2>Acceso restringido</h2>
-          <p>Solo los usuarios con rol Administrador pueden ver esta sección.</p>
-        </div>
-      </Layout>
+      <div className="panel glass-card access-denied fade-in">
+        <ShieldAlert size={40} className="glow" />
+        <h2>Acceso restringido</h2>
+        <p>Solo los usuarios con rol Administrador pueden ver esta sección.</p>
+      </div>
     );
   }
 
@@ -52,7 +50,7 @@ function Usuarios() {
   };
 
   return (
-    <Layout title="Usuarios" subtitle="Gestión de usuarios del sistema">
+    <>
       <div className="usuarios-header fade-in">
         <div>
           <h3>Usuarios del sistema</h3>
@@ -139,7 +137,7 @@ function Usuarios() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }
 

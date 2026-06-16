@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Eye, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 
-import Layout from '../components/Layout';
 import { clientes as initialClientes, type Cliente, type EstadoCliente } from '../data/mockData';
 import './Clientes.css';
 
@@ -61,7 +60,7 @@ function Clientes() {
   };
 
   return (
-    <Layout title="Clientes" subtitle="Gestión de clientes registrados">
+    <>
       <div className="clientes-header fade-in">
         <div className="search-filters">
           <div className="search-box">
@@ -227,7 +226,7 @@ function Clientes() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }
 

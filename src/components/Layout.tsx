@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
   Car,
@@ -64,15 +64,20 @@ const configNav: NavItem[] = [
   { to: '/configuracion', icon: Settings, label: 'Configuración' },
 ];
 
-interface LayoutProps {
-  title: string;
-  subtitle: string;
-  children: ReactNode;
-}
+const pageTitles: Record<string, { title: string; subtitle: string }> = {
+  '/dashboard':    { title: 'Dashboard',      subtitle: 'Resumen general del sistema' },
+  '/clientes':     { title: 'Clientes',       subtitle: 'Gestión de clientes registrados' },
+  '/simulador':    { title: 'Simulador',      subtitle: 'Simulador de crédito vehicular' },
+  '/historial':    { title: 'Historial',      subtitle: 'Registro de simulaciones y créditos' },
+  '/ayuda':        { title: 'Ayuda',          subtitle: 'Centro de soporte y preguntas frecuentes' },
+  '/usuarios':     { title: 'Usuarios',       subtitle: 'Gestión de usuarios del sistema' },
+  '/configuracion':{ title: 'Configuración',  subtitle: 'Administra tu perfil, empresa y preferencias' },
+};
 
-function Layout({ title, subtitle, children }: LayoutProps) {
+function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { title, subtitle } = pageTitles[location.pathname] ?? { title: '', subtitle: '' };
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -291,7 +296,7 @@ function Layout({ title, subtitle, children }: LayoutProps) {
             </div>
           </header>
 
-          <div className="page-content">{children}</div>
+          <div className="page-content"><Outlet /></div>
         </main>
       </div>
     </>

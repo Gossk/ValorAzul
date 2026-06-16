@@ -12,7 +12,6 @@ import {
   UserCircle,
 } from 'lucide-react';
 
-import Layout from '../components/Layout';
 import './Ayuda.css';
 
 interface Faq {
@@ -90,7 +89,7 @@ function Ayuda() {
   }, [search, categoriaActiva]);
 
   return (
-    <Layout title="Ayuda" subtitle="Centro de soporte y preguntas frecuentes">
+    <>
       <div className="ayuda-hero glass-card fade-in">
         <h1>¿En qué podemos ayudarte?</h1>
         <p>Encuentra respuestas rápidas sobre créditos, documentos, tu cuenta y soporte técnico.</p>
@@ -190,7 +189,7 @@ function Ayuda() {
           <button className="btn btn-primary">Iniciar chat en vivo</button>
         </div>
       </div>
-    </Layout>
+    </>
   );
 }
 

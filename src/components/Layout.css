@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
-  background: #050010;
+  background: radial-gradient(ellipse at 40% 35%, #6b21a8 0%, #3b0764 30%, #0d0120 70%, #050010 100%);
   transition: grid-template-columns var(--transition);
 }
 
@@ -37,11 +37,22 @@
   position: relative;
 }
 
-.brand-svg {
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-container svg {
   flex-shrink: 0;
 }
 
-.brand-name {
+.logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-name {
   display: block;
   font-size: 20px;
   font-weight: 800;
@@ -50,7 +61,7 @@
   line-height: 1;
 }
 
-.brand-sub {
+.logo-sub {
   display: block;
   font-size: 9px;
   font-weight: 400;
@@ -215,7 +226,7 @@
   padding: 28px 10px;
 }
 
-.sidebar-collapsed .brand-text,
+.sidebar-collapsed .logo-text,
 .sidebar-collapsed .link-label,
 .sidebar-collapsed .menu-title {
   display: none;
@@ -260,6 +271,7 @@
   padding: 24px 28px 48px;
   min-height: 100vh;
   position: relative;
+  z-index: 1;
   background: transparent;
 }
 
@@ -373,7 +385,7 @@
     padding: 28px 18px;
   }
 
-  .sidebar-collapsed .brand-text,
+  .sidebar-collapsed .logo-text,
   .sidebar-collapsed .link-label,
   .sidebar-collapsed .menu-title {
     display: revert;

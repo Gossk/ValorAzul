@@ -212,16 +212,12 @@ function Layout() {
           left: 0,
           width: '100vw',
           height: '100vh',
-          zIndex: 0,
+          zIndex: -1,
           pointerEvents: 'none',
         }}
       />
 
-      {/* Grid principal — z-index 1 en el root, siempre encima del canvas */}
-      <div
-        className={`app-layout ${collapsed ? 'sidebar-collapsed' : ''}`}
-        style={{ position: 'relative', zIndex: 1 }}
-      >
+      <div className={`app-layout ${collapsed ? 'sidebar-collapsed' : ''}`}>
         <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
           <div>
             <div className="brand">

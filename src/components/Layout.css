@@ -2,8 +2,10 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
+  /* fallback si el canvas no carga */
   background: radial-gradient(ellipse at 40% 35%, #6b21a8 0%, #3b0764 30%, #0d0120 70%, #050010 100%);
   transition: grid-template-columns var(--transition);
+  position: relative;
 }
 
 .app-layout.sidebar-collapsed {

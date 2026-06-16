@@ -42,7 +42,7 @@ body,
 
 body {
   font-family: 'Inter', Arial, sans-serif;
-  background: #050a08;
+  background: transparent;
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
 }

@@ -262,10 +262,21 @@ export default function Simulador() {
       <aside className="sidebar">
         <div>
           <div className="brand">
-            <div className="brand-icon">V</div>
-            <div>
-              <h2>Valor Azul</h2>
-              <p>Crédito Vehicular</p>
+            <div className="logo-container">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="simLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#818CF8" />
+                    <stop offset="50%" stopColor="#6366F1" />
+                    <stop offset="100%" stopColor="#3B82F6" />
+                  </linearGradient>
+                </defs>
+                <path d="M2 4 L16 28 L30 4 L24 4 L16 18 L8 4 Z" fill="url(#simLogoGrad)" />
+              </svg>
+              <div className="logo-text">
+                <span className="logo-name">VALOR</span>
+                <span className="logo-sub">AZUL</span>
+              </div>
             </div>
           </div>
 

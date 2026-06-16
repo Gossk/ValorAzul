@@ -1,4 +1,22 @@
 
+/* ── Simulador: dark glassmorphism ── */
+
+.dashboard-layout {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  background: radial-gradient(ellipse at 40% 35%, #6b21a8 0%, #3b0764 30%, #0d0120 70%, #050010 100%);
+}
+
+/* Glass background for panels inside Simulador */
+.dashboard-layout .panel {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+}
+
 .sim-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -13,13 +31,13 @@
   gap: 10px;
   padding-bottom: 14px;
   margin-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sim-card-header h3 {
   margin: 0;
   font-size: 15px;
-  color: #0f172a;
+  color: #ffffff;
   font-weight: 700;
 }
 
@@ -31,24 +49,23 @@
 .sim-field label {
   display: block;
   font-size: 13px;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.7);
   font-weight: 500;
   margin-bottom: 5px;
 }
 
-
 .sim-ig {
   display: flex;
   align-items: center;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   overflow: hidden;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.05);
   transition: border-color .15s;
 }
 
 .sim-ig:focus-within {
-  border-color: #2563eb;
+  border-color: #3b82f6;
 }
 
 .sim-ig input {
@@ -58,7 +75,7 @@
   background: transparent;
   padding: 9px 11px;
   font-size: 14px;
-  color: #0f172a;
+  color: #ffffff;
   min-width: 0;
   font-family: inherit;
 }
@@ -66,18 +83,18 @@
 .sim-pre {
   padding: 9px 9px 9px 12px;
   font-size: 13px;
-  color: #94a3b8;
-  background: #f8fafc;
-  border-right: 1px solid #e2e8f0;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.03);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 }
 
 .sim-suf {
   padding: 9px 11px;
   font-size: 13px;
-  color: #2563eb;
-  background: #eff6ff;
-  border-left: 1px solid #dbeafe;
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.15);
+  border-left: 1px solid rgba(59, 130, 246, 0.2);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -85,34 +102,39 @@
 /* Select */
 .sim-sel {
   width: 100%;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   padding: 9px 11px;
   font-size: 14px;
-  color: #0f172a;
-  background: #fff;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
   outline: none;
   font-family: inherit;
   cursor: pointer;
   transition: border-color .15s;
 }
 
-.sim-sel:focus { border-color: #2563eb; }
+.sim-sel:focus { border-color: #3b82f6; }
+
+.sim-sel option {
+  background: #0d1b35;
+  color: #ffffff;
+}
 
 /* Input suelto (plazo numérico) */
 .sim-solo {
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   padding: 9px 11px;
   font-size: 14px;
-  color: #0f172a;
-  background: #fff;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
   outline: none;
   font-family: inherit;
   transition: border-color .15s;
 }
 
-.sim-solo:focus { border-color: #2563eb; }
+.sim-solo:focus { border-color: #3b82f6; }
 
 /* Total costos */
 .sim-total-row {
@@ -121,13 +143,13 @@
   align-items: center;
   padding-top: 12px;
   margin-top: 10px;
-  border-top: 1px dashed #e2e8f0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
   font-size: 13px;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .sim-total-row strong {
-  color: #0f172a;
+  color: #ffffff;
   font-size: 14px;
 }
 
@@ -135,7 +157,7 @@
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -144,7 +166,7 @@
   font-weight: 600;
   cursor: pointer;
   margin-bottom: 24px;
-  box-shadow: 0 4px 14px rgba(37,99,235,.35);
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
   font-family: inherit;
   transition: opacity .15s;
 }
@@ -159,7 +181,7 @@
 /* Tabs */
 .sim-tabs {
   display: flex;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   margin-bottom: 20px;
 }
 
@@ -169,7 +191,7 @@
   border-bottom: 2px solid transparent;
   padding: 10px 22px;
   font-size: 14px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.5);
   font-weight: 500;
   cursor: pointer;
   margin-bottom: -1px;
@@ -178,17 +200,27 @@
 }
 
 .sim-tab.active {
-  color: #2563eb;
-  border-bottom-color: #2563eb;
+  color: #60a5fa;
+  border-bottom-color: #60a5fa;
   font-weight: 600;
 }
 
-.sim-tab:hover:not(.active) { color: #0f172a; }
+.sim-tab:hover:not(.active) { color: rgba(255, 255, 255, 0.9); }
 
 .sim-resumen-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
+}
+
+.sim-resumen-section-title {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  padding: 12px 16px 4px;
 }
 
 .sim-resumen-row {
@@ -197,18 +229,18 @@
   align-items: center;
   padding: 12px 16px;
   border-radius: 10px;
-  background: #f8fafc;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .sim-rl {
   font-size: 13px;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .sim-rv {
   font-size: 14px;
   font-weight: 700;
-  color: #0f172a;
+  color: #ffffff;
 }
 
 /* Tabla cronograma */
@@ -219,7 +251,7 @@
 }
 
 .sim-table th {
-  background: #0f172a;
+  background: rgba(0, 0, 0, 0.4);
   color: #93c5fd;
   padding: 11px 14px;
   text-align: left;
@@ -231,13 +263,22 @@
 
 .sim-table td {
   padding: 10px 14px;
-  color: #334155;
-  border-bottom: 1px solid #f1f5f9;
+  color: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.sim-table tbody tr:hover { background: #f0f7ff; }
-.sim-alt { background: #f8fafc; }
-.sim-red   { color: #dc2626; }
-.sim-green { color: #16a34a; }
+.sim-table tbody tr:hover { background: rgba(59, 130, 246, 0.08); }
+.sim-alt { background: rgba(255, 255, 255, 0.02); }
+.sim-red   { color: #f87171; }
+.sim-green { color: #4ade80; }
+
+.sim-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f87171;
+  font-size: 13px;
+  margin-top: 8px;
+}
 
 .stats { margin-top: 0; }

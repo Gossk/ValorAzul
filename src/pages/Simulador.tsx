@@ -44,36 +44,38 @@ interface Resumen {
 const fmt = (n: number) =>
   n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+const n = (s: string) => parseFloat(s) || 0
+
 export default function Simulador() {
-  // — Datos del vehículo —
-  const [precioVehiculo,     setPrecioVehiculo]     = useState(50000)
-  const [cuotaInicialPorc,   setCuotaInicialPorc]   = useState(0.20)
+  // — Datos del vehículo — (todos string para permitir edición libre)
+  const [precioVehiculo,     setPrecioVehiculo]     = useState('40000')
+  const [cuotaInicialPorc,   setCuotaInicialPorc]   = useState('0.20')
   const [tipoMoneda,         setTipoMoneda]         = useState(1)
-  const [tipoCambio,         setTipoCambio]         = useState(3.5)
+  const [tipoCambio,         setTipoCambio]         = useState('3.5')
   const [tipoPlazo,          setTipoPlazo]          = useState(1)
-  const [plazoMeses,         setPlazoMeses]         = useState(60)
-  const [plazoAnios,         setPlazoAnios]         = useState(5)
+  const [plazoMeses,         setPlazoMeses]         = useState('24')
+  const [plazoAnios,         setPlazoAnios]         = useState('2')
 
   // — Tipo de tasa —
-  const [tipoTasa,           setTipoTasa]           = useState(1)   // 1=TEA, 2=TNA
-  const [tasaTEA,            setTasaTEA]            = useState(0.11)
-  const [tasaTNA,            setTasaTNA]            = useState(0.10)
-  const [capitalizacion,     setCapitalizacion]     = useState(12)  // frecuencia/año
+  const [tipoTasa,           setTipoTasa]           = useState(1)
+  const [tasaTEA,            setTasaTEA]            = useState('0.11')
+  const [tasaTNA,            setTasaTNA]            = useState('0.10')
+  const [capitalizacion,     setCapitalizacion]     = useState(12)
 
   // — Seguros —
-  const [tasaDesgravamen,    setTasaDesgravamen]    = useState(0.0035)
-  const [tasaVehicularAnual, setTasaVehicularAnual] = useState(0.036)
+  const [tasaDesgravamen,    setTasaDesgravamen]    = useState('0.0035')
+  const [tasaVehicularAnual, setTasaVehicularAnual] = useState('0.036')
 
   // — Período de gracia —
   const [tieneGracia,        setTieneGracia]        = useState(false)
-  const [mesesGracia,        setMesesGracia]        = useState(0)
-  const [tipoGracia,         setTipoGracia]         = useState(1)   // 1=Total, 2=Parcial
+  const [mesesGracia,        setMesesGracia]        = useState('0')
+  const [tipoGracia,         setTipoGracia]         = useState(1)
 
   // — Costos iniciales —
-  const [costosNotariales,   setCostosNotariales]   = useState(200)
-  const [costosRegistrales,  setCostosRegistrales]  = useState(150)
-  const [tasacion,           setTasacion]           = useState(100)
-  const [otrosGastos,        setOtrosGastos]        = useState(50)
+  const [costosNotariales,   setCostosNotariales]   = useState('120')
+  const [costosRegistrales,  setCostosRegistrales]  = useState('180')
+  const [tasacion,           setTasacion]           = useState('80')
+  const [otrosGastos,        setOtrosGastos]        = useState('100')
 
   // — Resultados —
   const [cronograma,         setCronograma]         = useState<CronogramaItem[]>([])
@@ -82,15 +84,29 @@ export default function Simulador() {
   const [activeTab,          setActiveTab]          = useState<'resumen' | 'cronograma'>('resumen')
   const [errorGracia,        setErrorGracia]        = useState('')
 
+  // ── valores numéricos derivados para cálculos en tiempo real ──────────────
+  const _precio    = n(precioVehiculo)
+  const _cuotaPorc = n(cuotaInicialPorc)
+  const _cambio    = n(tipoCambio)
+  const _tna       = n(tasaTNA)
+  const _tea       = n(tasaTEA)
+  const _desg      = n(tasaDesgravamen)
+  const _veh       = n(tasaVehicularAnual)
+  const _notarial  = n(costosNotariales)
+  const _registral = n(costosRegistrales)
+  const _tasacion  = n(tasacion)
+  const _otros     = n(otrosGastos)
+
+  const precioFinalDisplay = tipoMoneda === 2 ? _precio * _cambio : _precio
+
   // ── CÁLCULO TEA/TEM ────────────────────────────────────────────────────────
-  const calcularTEM = (): { tea: number; tem: number } => {
+  const calcularTEM = (teaVal: number, tnaVal: number): { tea: number; tem: number } => {
     if (tipoTasa === 1) {
-      const tea = tasaTEA
+      const tea = teaVal
       const tem = Math.pow(1 + tea, 1 / 12) - 1
       return { tea, tem }
     } else {
-      // TNA → TEA → TEM
-      const tea = Math.pow(1 + tasaTNA / capitalizacion, capitalizacion) - 1
+      const tea = Math.pow(1 + tnaVal / capitalizacion, capitalizacion) - 1
       const tem = Math.pow(1 + tea, 1 / 12) - 1
       return { tea, tem }
     }
@@ -100,28 +116,110 @@ export default function Simulador() {
   const simular = () => {
     setErrorGracia('')
 
-    // Precio en soles
-    let precio = tipoMoneda === 2 ? precioVehiculo * tipoCambio : precioVehiculo
-    const plazoFinal = tipoPlazo === 1 ? plazoMeses : plazoAnios * 12
+    // convertir strings a números para validar y calcular
+    const precioNum        = n(precioVehiculo)
+    const cuotaInicialNum  = n(cuotaInicialPorc)
+    const tipoCambioNum    = n(tipoCambio)
+    const plazoMesesNum    = n(plazoMeses)
+    const plazoAniosNum    = n(plazoAnios)
+    const tasaTEANum       = n(tasaTEA)
+    const tasaTNANum       = n(tasaTNA)
+    const tasaDesgNum      = n(tasaDesgravamen)
+    const tasaVehNum       = n(tasaVehicularAnual)
+    const notarialesNum    = n(costosNotariales)
+    const registralesNum   = n(costosRegistrales)
+    const tasacionNum      = n(tasacion)
+    const otrosNum         = n(otrosGastos)
+    const mesesGraciaNum   = n(mesesGracia)
 
-    // Validación período de gracia
-    if (tieneGracia && mesesGracia >= plazoFinal) {
-      setErrorGracia('Los meses de gracia deben ser menores que el plazo total.')
+    // ── VALIDACIONES ──────────────────────────────────────────────────────────
+    const precioFinal = tipoMoneda === 2 ? precioNum * tipoCambioNum : precioNum
+    if (precioNum <= 0) {
+      setErrorGracia('El precio del vehículo debe ser mayor a 0.')
       return
     }
+    if (precioFinal < 5000) {
+      setErrorGracia('El precio del vehículo debe ser al menos S/ 5,000.')
+      return
+    }
+    if (precioFinal > 500000) {
+      setErrorGracia('El precio del vehículo no puede superar S/ 500,000.')
+      return
+    }
+    if (tipoMoneda === 2 && (tipoCambioNum < 3.0 || tipoCambioNum > 5.0)) {
+      setErrorGracia('El tipo de cambio debe estar entre 3.00 y 5.00.')
+      return
+    }
+    if (cuotaInicialNum < 0.10) {
+      setErrorGracia('La cuota inicial mínima es el 10% del precio del vehículo.')
+      return
+    }
+    if (cuotaInicialNum >= 1) {
+      setErrorGracia('La cuota inicial no puede ser igual o mayor al 100%.')
+      return
+    }
+    const plazoFinal = tipoPlazo === 1 ? plazoMesesNum : plazoAniosNum * 12
+    if (plazoFinal < 6) {
+      setErrorGracia('El plazo mínimo es 6 meses.')
+      return
+    }
+    if (plazoFinal > 84) {
+      setErrorGracia('El plazo máximo es 84 meses (7 años).')
+      return
+    }
+    const tasaEfectivaAnual = tipoTasa === 1
+      ? tasaTEANum
+      : Math.pow(1 + tasaTNANum / capitalizacion, capitalizacion) - 1
+    if (tasaEfectivaAnual < 0.01) {
+      setErrorGracia('La tasa efectiva anual no puede ser menor al 1%.')
+      return
+    }
+    if (tasaEfectivaAnual > 0.80) {
+      setErrorGracia('La tasa efectiva anual no puede superar el 80%.')
+      return
+    }
+    if (tasaDesgNum < 0.0001 || tasaDesgNum > 0.01) {
+      setErrorGracia('El seguro de desgravamen mensual debe estar entre 0.01% y 1.00%.')
+      return
+    }
+    if (tasaVehNum < 0.01 || tasaVehNum > 0.08) {
+      setErrorGracia('El seguro vehicular anual debe estar entre 1% y 8%.')
+      return
+    }
+    if (notarialesNum < 0 || registralesNum < 0 || tasacionNum < 0 || otrosNum < 0) {
+      setErrorGracia('Los costos iniciales no pueden ser negativos.')
+      return
+    }
+    if (notarialesNum > 5000 || registralesNum > 5000 || tasacionNum > 5000 || otrosNum > 5000) {
+      setErrorGracia('Ningún costo inicial puede superar S/ 5,000.')
+      return
+    }
+    if (tieneGracia) {
+      if (mesesGraciaNum < 1) {
+        setErrorGracia('Los meses de gracia deben ser al menos 1.')
+        return
+      }
+      if (mesesGraciaNum > 6) {
+        setErrorGracia('Los meses de gracia no pueden superar 6 meses.')
+        return
+      }
+      if (mesesGraciaNum >= plazoFinal) {
+        setErrorGracia('Los meses de gracia deben ser menores que el plazo total.')
+        return
+      }
+    }
+    // ── FIN VALIDACIONES ──────────────────────────────────────────────────────
 
-    const { tea, tem: TEM } = calcularTEM()
-    const prestamoInicial = precio - precio * cuotaInicialPorc
+    const precio = tipoMoneda === 2 ? precioNum * tipoCambioNum : precioNum
+    const { tea, tem: TEM } = calcularTEM(tasaTEANum, tasaTNANum)
+    const prestamoInicial = precio - precio * cuotaInicialNum
     let saldo = prestamoInicial
 
-    const segVehMensual = (precio * tasaVehicularAnual) / 12
-    const totalCostosIniciales = costosNotariales + costosRegistrales + tasacion + otrosGastos
-    const gracia = tieneGracia ? mesesGracia : 0
+    const segVehMensual = (precio * tasaVehNum) / 12
+    const totalCostosIniciales = notarialesNum + registralesNum + tasacionNum + otrosNum
+    const gracia = tieneGracia ? mesesGraciaNum : 0
     const mesesAmortiza = plazoFinal - gracia
 
-    // ── CUOTA BASE INICIAL (algoritmo exacto) ──────────────────────────────
-    // Con gracia (total o parcial): se calcula sobre prestamo original y meses que amortizan
-    // Sin gracia: se calcula sobre prestamo original y plazo completo
     let cuotaBase = tieneGracia
       ? prestamoInicial * (TEM * Math.pow(1 + TEM, mesesAmortiza)) / (Math.pow(1 + TEM, mesesAmortiza) - 1)
       : prestamoInicial * (TEM * Math.pow(1 + TEM, plazoFinal))    / (Math.pow(1 + TEM, plazoFinal)    - 1)
@@ -136,44 +234,35 @@ export default function Simulador() {
       let tipo: CronogramaItem['tipo'] = 'normal'
 
       if (mes <= gracia) {
-        // ── PERÍODO DE GRACIA ──────────────────────────────
         intMes = saldo * TEM
-
         if (tipoGracia === 1) {
-          // GRACIA TOTAL: intereses se capitalizan al saldo, no paga nada
-          tipo      = 'gracia_total'
-          desgMes   = 0
-          amort     = 0
-          saldo     = saldo + intMes   // capitalización
+          tipo       = 'gracia_total'
+          desgMes    = 0
+          amort      = 0
+          saldo      = saldo + intMes
           cuotaTotal = 0
         } else {
-          // GRACIA PARCIAL: paga intereses + seguros, no amortiza
-          tipo      = 'gracia_parcial'
-          desgMes   = saldo * tasaDesgravamen
-          amort     = 0
+          tipo       = 'gracia_parcial'
+          desgMes    = saldo * tasaDesgNum
+          amort      = 0
           cuotaTotal = intMes + segVehMensual + desgMes
         }
       } else {
-        // ── PERÍODO NORMAL ─────────────────────────────────
-        // Gracia TOTAL: al llegar al primer mes normal recalcular cuota base
-        // con el saldo ya capitalizado (que creció durante la gracia)
         if (mes === gracia + 1 && gracia > 0 && tipoGracia === 1) {
           cuotaBase = saldo * (TEM * Math.pow(1 + TEM, mesesAmortiza)) / (Math.pow(1 + TEM, mesesAmortiza) - 1)
         }
-
         intMes  = saldo * TEM
-        desgMes = saldo * tasaDesgravamen
-        amort = cuotaBase - intMes
-        saldo = saldo - amort
+        desgMes = saldo * tasaDesgNum
+        amort   = cuotaBase - intMes
+        saldo   = saldo - amort
         if (saldo < 0.01) saldo = 0
         cuotaTotal = cuotaBase + segVehMensual + desgMes
       }
 
       cuotasPorMes.push(cuotaTotal)
-
-      totInt   += intMes
-      totAmort += amort
-      totDesg  += desgMes
+      totInt    += intMes
+      totAmort  += amort
+      totDesg   += desgMes
       totPagado += cuotaTotal
 
       nuevoCron.push({
@@ -189,16 +278,8 @@ export default function Simulador() {
     }
 
     const totalSegVeh = segVehMensual * plazoFinal
-
-    // ── VAN ────────────────────────────────────────────────
-    // flujo_0 = prestamo - costos_iniciales (según algoritmo)
     const flujo0 = prestamoInicial - totalCostosIniciales
-    let van = flujo0
-    for (let i = 0; i < plazoFinal; i++) {
-      van += (-cuotasPorMes[i]) / Math.pow(1 + TEM, i + 1)
-    }
 
-    // ── TIR (detección automática de rango + bisección) ───
     const vanAt = (tasa: number): number => {
       let v = flujo0
       for (let i = 0; i < plazoFinal; i++) {
@@ -206,44 +287,46 @@ export default function Simulador() {
       }
       return v
     }
-    // 1) Barrer para encontrar rango donde VAN cambia de signo
-    let tirLow = 0.000001
-    let tirHigh = 0.001
-    while (tirHigh < 2.0 && vanAt(tirLow) * vanAt(tirHigh) >= 0) {
-      tirLow  = tirHigh
-      tirHigh += 0.001
-    }
-    // 2) Bisección fina dentro del rango hallado
-    let tirMensual = (tirLow + tirHigh) / 2
-    for (let iter = 0; iter < 300; iter++) {
-      const mid = (tirLow + tirHigh) / 2
-      const v   = vanAt(mid)
-      if (Math.abs(v) < 0.0001) { tirMensual = mid; break }
-      if (vanAt(tirLow) * v < 0) tirHigh = mid
-      else tirLow = mid
-      tirMensual = mid
+
+    const van = vanAt(TEM)
+
+    // ── TIR: Newton-Raphson (igual que Excel) ─────────────────────────────────
+    let tirMensual = TEM
+    for (let iter = 0; iter < 1000; iter++) {
+      let f = flujo0, df = 0
+      for (let i = 0; i < plazoFinal; i++) {
+        const t = i + 1
+        f  += (-cuotasPorMes[i]) / Math.pow(1 + tirMensual, t)
+        df += (t * cuotasPorMes[i]) / Math.pow(1 + tirMensual, t + 1)
+      }
+      const delta = f / df
+      tirMensual -= delta
+      if (Math.abs(delta) < 1e-15) break
     }
 
     const tcea = Math.pow(1 + tirMensual, 12) - 1
 
+    const primerMesNormal = nuevoCron.find(c => c.tipo === 'normal')!
+    const cuotaMensualBase = primerMesNormal.cuotaBase
+
     setResumen({
-      totalInteres:          +totInt.toFixed(2),
-      totalAmortizacion:     +totAmort.toFixed(2),
-      totalCuotasBase:       +(cuotaBase * mesesAmortiza).toFixed(2),
-      totalSeguroDesgravamen:+totDesg.toFixed(2),
-      totalSeguroVehicular:  +totalSegVeh.toFixed(2),
-      totalCostos:           +totalCostosIniciales.toFixed(2),
-      totalPagar:            +(totPagado + totalCostosIniciales).toFixed(2),
-      van:                   +van.toFixed(2),
-      tirMensual:            +(tirMensual * 100).toFixed(4),
-      tcea:                  +(tcea * 100).toFixed(4),
-      tea:                   +(tea * 100).toFixed(4),
-      tem:                   +(TEM * 100).toFixed(4),
-      cuotaMensual:          +nuevoCron.find(c => c.tipo === 'normal')!.cuotaTotal.toFixed(2),
-      prestamo:              +prestamoInicial.toFixed(2),
-      plazoMeses:            plazoFinal,
-      mesesGracia:           gracia,
-      mesesAmortizacion:     mesesAmortiza,
+      totalInteres:           +totInt.toFixed(2),
+      totalAmortizacion:      +totAmort.toFixed(2),
+      totalCuotasBase:        +(cuotaBase * mesesAmortiza).toFixed(2),
+      totalSeguroDesgravamen: +totDesg.toFixed(2),
+      totalSeguroVehicular:   +totalSegVeh.toFixed(2),
+      totalCostos:            +totalCostosIniciales.toFixed(2),
+      totalPagar:             +(totPagado + totalCostosIniciales).toFixed(2),
+      van:                    +van.toFixed(2),
+      tirMensual:             tirMensual * 100,
+      tcea:                   tcea * 100,
+      tea:                    +(tea * 100).toFixed(4),
+      tem:                    +(TEM * 100).toFixed(6),
+      cuotaMensual:           +cuotaMensualBase.toFixed(2),
+      prestamo:               +prestamoInicial.toFixed(2),
+      plazoMeses:             plazoFinal,
+      mesesGracia:            gracia,
+      mesesAmortizacion:      mesesAmortiza,
     })
 
     setCronograma(nuevoCron)
@@ -254,6 +337,11 @@ export default function Simulador() {
   const capMap: Record<number, string> = {
     360: 'Diaria (360 días)', 12: 'Mensual', 4: 'Trimestral', 2: 'Semestral', 1: 'Anual',
   }
+
+  // TEA equivalente en tiempo real para TNA
+  const teaEquivDisplay = _tna > 0
+    ? ((Math.pow(1 + _tna / capitalizacion, capitalizacion) - 1) * 100).toFixed(4)
+    : '0.0000'
 
   return (
     <div className="dashboard-layout">
@@ -341,8 +429,11 @@ export default function Simulador() {
             <Field label="Precio del vehículo">
               <div className="sim-ig">
                 <span className="sim-pre">{tipoMoneda === 1 ? 'S/' : '$'}</span>
-                <input type="number" value={precioVehiculo}
-                  onChange={e => setPrecioVehiculo(+e.target.value)} />
+                <input
+                  type="number"
+                  value={precioVehiculo}
+                  onChange={e => setPrecioVehiculo(e.target.value)}
+                />
               </div>
             </Field>
 
@@ -357,10 +448,13 @@ export default function Simulador() {
             {tipoMoneda === 2 && (
               <Field label="Tipo de cambio">
                 <div className="sim-ig">
-                  <input type="number" step="0.01" value={tipoCambio}
-                    onChange={e => setTipoCambio(+e.target.value)} />
+                  <input
+                    type="number" step="0.01"
+                    value={tipoCambio}
+                    onChange={e => setTipoCambio(e.target.value)}
+                  />
                   <span className="sim-suf">
-                    = S/ {fmt(precioVehiculo * tipoCambio)}
+                    = S/ {_precio > 0 && _cambio > 0 ? fmt(_precio * _cambio) : '0.00'}
                   </span>
                 </div>
               </Field>
@@ -368,11 +462,13 @@ export default function Simulador() {
 
             <Field label="Cuota inicial (decimal)">
               <div className="sim-ig">
-                <input type="number" step="0.01" min="0" max="0.99"
+                <input
+                  type="number" step="0.01"
                   value={cuotaInicialPorc}
-                  onChange={e => setCuotaInicialPorc(+e.target.value)} />
+                  onChange={e => setCuotaInicialPorc(e.target.value)}
+                />
                 <span className="sim-suf">
-                  = S/ {fmt((tipoMoneda === 2 ? precioVehiculo * tipoCambio : precioVehiculo) * cuotaInicialPorc)}
+                  = S/ {precioFinalDisplay > 0 && _cuotaPorc > 0 ? fmt(precioFinalDisplay * _cuotaPorc) : '0.00'}
                 </span>
               </div>
             </Field>
@@ -384,11 +480,13 @@ export default function Simulador() {
                   <option value={1}>Meses</option>
                   <option value={2}>Años</option>
                 </select>
-                <input className="sim-solo" style={{ flex: 1 }} type="number"
+                <input
+                  className="sim-solo" style={{ flex: 1 }} type="number"
                   value={tipoPlazo === 1 ? plazoMeses : plazoAnios}
                   onChange={e => tipoPlazo === 1
-                    ? setPlazoMeses(+e.target.value)
-                    : setPlazoAnios(+e.target.value)} />
+                    ? setPlazoMeses(e.target.value)
+                    : setPlazoAnios(e.target.value)}
+                />
               </div>
             </Field>
           </div>
@@ -411,18 +509,28 @@ export default function Simulador() {
             {tipoTasa === 1 ? (
               <Field label="TEA (ej: 0.11 = 11%)">
                 <div className="sim-ig">
-                  <input type="number" step="0.001" value={tasaTEA}
-                    onChange={e => setTasaTEA(+e.target.value)} />
-                  <span className="sim-suf">{(tasaTEA * 100).toFixed(1)}%</span>
+                  <input
+                    type="number" step="0.001"
+                    value={tasaTEA}
+                    onChange={e => setTasaTEA(e.target.value)}
+                  />
+                  <span className="sim-suf">
+                    {_tea > 0 ? (_tea * 100).toFixed(1) : '0.0'}%
+                  </span>
                 </div>
               </Field>
             ) : (
               <>
                 <Field label="TNA (ej: 0.10 = 10%)">
                   <div className="sim-ig">
-                    <input type="number" step="0.001" value={tasaTNA}
-                      onChange={e => setTasaTNA(+e.target.value)} />
-                    <span className="sim-suf">{(tasaTNA * 100).toFixed(1)}%</span>
+                    <input
+                      type="number" step="0.001"
+                      value={tasaTNA}
+                      onChange={e => setTasaTNA(e.target.value)}
+                    />
+                    <span className="sim-suf">
+                      {_tna > 0 ? (_tna * 100).toFixed(1) : '0.0'}%
+                    </span>
                   </div>
                 </Field>
                 <Field label="Capitalización">
@@ -433,29 +541,36 @@ export default function Simulador() {
                     ))}
                   </select>
                 </Field>
-                {/* Mostrar TEA equivalente calculada */}
                 <div className="sim-total-row">
                   <span>TEA equivalente</span>
-                  <strong>
-                    {((Math.pow(1 + tasaTNA / capitalizacion, capitalizacion) - 1) * 100).toFixed(4)}%
-                  </strong>
+                  <strong>{teaEquivDisplay}%</strong>
                 </div>
               </>
             )}
 
             <Field label="Seg. Desgravamen mensual">
               <div className="sim-ig">
-                <input type="number" step="0.0001" value={tasaDesgravamen}
-                  onChange={e => setTasaDesgravamen(+e.target.value)} />
-                <span className="sim-suf">{(tasaDesgravamen * 100).toFixed(2)}%</span>
+                <input
+                  type="number" step="0.0001"
+                  value={tasaDesgravamen}
+                  onChange={e => setTasaDesgravamen(e.target.value)}
+                />
+                <span className="sim-suf">
+                  {_desg > 0 ? (_desg * 100).toFixed(2) : '0.00'}%
+                </span>
               </div>
             </Field>
 
             <Field label="Seg. Vehicular anual">
               <div className="sim-ig">
-                <input type="number" step="0.001" value={tasaVehicularAnual}
-                  onChange={e => setTasaVehicularAnual(+e.target.value)} />
-                <span className="sim-suf">{(tasaVehicularAnual * 100).toFixed(1)}%</span>
+                <input
+                  type="number" step="0.001"
+                  value={tasaVehicularAnual}
+                  onChange={e => setTasaVehicularAnual(e.target.value)}
+                />
+                <span className="sim-suf">
+                  {_veh > 0 ? (_veh * 100).toFixed(1) : '0.0'}%
+                </span>
               </div>
             </Field>
 
@@ -475,8 +590,11 @@ export default function Simulador() {
 
             {tieneGracia && (<>
               <Field label="Meses de gracia">
-                <input className="sim-solo" type="number" min="1" value={mesesGracia}
-                  onChange={e => { setMesesGracia(+e.target.value); setErrorGracia('') }} />
+                <input
+                  className="sim-solo" type="number"
+                  value={mesesGracia}
+                  onChange={e => { setMesesGracia(e.target.value); setErrorGracia('') }}
+                />
               </Field>
               <Field label="Tipo de gracia">
                 <select className="sim-sel" value={tipoGracia}
@@ -491,6 +609,12 @@ export default function Simulador() {
                 </div>
               )}
             </>)}
+
+            {!tieneGracia && errorGracia && (
+              <div className="sim-error">
+                <AlertCircle size={15} /> {errorGracia}
+              </div>
+            )}
           </div>
 
           {/* Costos y Gastos */}
@@ -504,17 +628,21 @@ export default function Simulador() {
               ['Costos Registrales', costosRegistrales, setCostosRegistrales],
               ['Tasación',           tasacion,          setTasacion],
               ['Otros Gastos',       otrosGastos,       setOtrosGastos],
-            ] as [string, number, (n: number) => void][]).map(([lbl, val, set]) => (
+            ] as [string, string, (v: string) => void][]).map(([lbl, val, set]) => (
               <Field key={lbl} label={lbl}>
                 <div className="sim-ig">
                   <span className="sim-pre">S/</span>
-                  <input type="number" value={val} onChange={e => set(+e.target.value)} />
+                  <input
+                    type="number" min={0}
+                    value={val}
+                    onChange={e => set(e.target.value)}
+                  />
                 </div>
               </Field>
             ))}
             <div className="sim-total-row">
               <span>Total costos iniciales</span>
-              <strong>S/ {fmt(costosNotariales + costosRegistrales + tasacion + otrosGastos)}</strong>
+              <strong>S/ {fmt(_notarial + _registral + _tasacion + _otros)}</strong>
             </div>
           </div>
         </div>
@@ -530,9 +658,8 @@ export default function Simulador() {
             <div className="stat-card">
               <div className="stat-icon blue"><DollarSign size={26} /></div>
               <div>
-                <p>Cuota mensual aprox.</p>
+                <p>Cuota mensual (sin seguros)</p>
                 <h2>S/ {fmt(resumen.cuotaMensual)}</h2>
-                <small>Incluye seguros</small>
               </div>
             </div>
             <div className="stat-card">
@@ -547,7 +674,7 @@ export default function Simulador() {
               <div className="stat-icon purple"><TrendingUp size={26} /></div>
               <div>
                 <p>TCEA</p>
-                <h2>{resumen.tcea}%</h2>
+                <h2>{resumen.tcea.toPrecision(5)}%</h2>
                 <small>Tasa de Costo Efectivo Anual</small>
               </div>
             </div>
@@ -571,13 +698,12 @@ export default function Simulador() {
 
             {activeTab === 'resumen' && (
               <div className="sim-resumen-grid">
-                {/* Tasas */}
                 <div className="sim-resumen-section-title">Tasas</div>
                 {([
-                  ['TEA',     `${resumen.tea}%`],
-                  ['TEM',     `${resumen.tem}%`],
-                  ['TIR Mensual', `${resumen.tirMensual}%`],
-                  ['TCEA',    `${resumen.tcea}%`],
+                  ['TEA',         `${resumen.tea}%`],
+                  ['TEM',         `${resumen.tem}%`],
+                  ['TIR Mensual', `${resumen.tirMensual.toPrecision(5)}%`],
+                  ['TCEA',        `${resumen.tcea.toPrecision(5)}%`],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <div key={lbl} className="sim-resumen-row">
                     <span className="sim-rl">{lbl}</span>
@@ -585,7 +711,6 @@ export default function Simulador() {
                   </div>
                 ))}
 
-                {/* Plazos */}
                 <div className="sim-resumen-section-title">Plazos</div>
                 {([
                   ['Plazo total',           `${resumen.plazoMeses} meses`],
@@ -598,7 +723,6 @@ export default function Simulador() {
                   </div>
                 ))}
 
-                {/* Totales */}
                 <div className="sim-resumen-section-title">Totales</div>
                 {([
                   ['Total interés',           `S/ ${fmt(resumen.totalInteres)}`],
@@ -615,7 +739,6 @@ export default function Simulador() {
                   </div>
                 ))}
 
-                {/* Indicadores */}
                 <div className="sim-resumen-section-title">Indicadores</div>
                 <div className="sim-resumen-row">
                   <span className="sim-rl">VAN</span>

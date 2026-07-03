@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { CircleDollarSign, ClipboardList, Download, User, XCircle } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { CircleDollarSign, ClipboardList, Download, XCircle } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -9,9 +9,24 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-
-import { historial, simulacionesPorMes, type EstadoSimulacion } from '../data/mockData';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+import { ensureSeedData } from '../data/firestoreSeeder';
 import './Historial.css';
+
+type EstadoSimulacion = 'Aprobada' | 'En evaluación' | 'Rechazada';
+
+interface RegistroFS {
+  id: string;
+  cliente: string;
+  vehiculo: string;
+  tipo: 'Nuevo' | 'Usado';
+  monto: number;
+  cuota: number;
+  plazo: number;
+  estado: EstadoSimulacion;
+  fecha: string;
+}
 
 const badgeClass: Record<EstadoSimulacion, string> = {
   Aprobada: 'badge-green',
@@ -25,19 +40,72 @@ const timelineIcon: Record<EstadoSimulacion, typeof CircleDollarSign> = {
   Rechazada: XCircle,
 };
 
-const clientesUnicos = Array.from(new Set(historial.map((h) => h.cliente)));
-
 function Historial() {
+  const [historial, setHistorial] = useState<RegistroFS[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   const [estado, setEstado] = useState('Todos');
   const [cliente, setCliente] = useState('Todos');
 
+  // ---- Cargar historial desde Firestore (con auto-seed) ----
+  useEffect(() => {
+    const init = async () => {
+      try {
+        await ensureSeedData();
+        const snapshot = await getDocs(collection(db, 'historial'));
+        const lista: RegistroFS[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          lista.push({
+            id: docSnap.id,
+            cliente: data.cliente || '',
+            vehiculo: data.vehiculo || '',
+            tipo: data.tipo || 'Nuevo',
+            monto: data.monto || 0,
+            cuota: data.cuota || 0,
+            plazo: data.plazo || 0,
+            estado: data.estado || 'En evaluación',
+            fecha: data.fecha || '',
+          });
+        });
+        setHistorial(lista);
+      } catch (err) {
+        console.error('Error cargando historial:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  // ---- Clientes únicos para filtro ----
+  const clientesUnicos = useMemo(() => {
+    return Array.from(new Set(historial.map((h) => h.cliente)));
+  }, [historial]);
+
+  // ---- Simular datos por mes ----
+  const simulacionesPorMes = useMemo(() => {
+    const meses: Record<string, number> = {};
+    const nombresMes = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    for (const h of historial) {
+      const [, m] = h.fecha.split('/').map(Number);
+      const key = nombresMes[m - 1] || 'N/A';
+      meses[key] = (meses[key] || 0) + 1;
+    }
+    return nombresMes
+      .filter((n) => meses[n])
+      .map((mes) => ({ mes, simulaciones: meses[mes] }));
+  }, [historial]);
+
+  // ---- Parsear fecha dd/mm/yyyy ----
   const parseFecha = (fecha: string) => {
     const [d, m, y] = fecha.split('/').map(Number);
     return new Date(y, m - 1, d).getTime();
   };
 
+  // ---- Filtrar ----
   const filtrados = useMemo(() => {
     return historial.filter((h) => {
       const matchEstado = estado === 'Todos' || h.estado === estado;
@@ -47,8 +115,9 @@ function Historial() {
       const matchHasta = !hasta || fechaTime <= new Date(hasta).getTime();
       return matchEstado && matchCliente && matchDesde && matchHasta;
     });
-  }, [desde, hasta, estado, cliente]);
+  }, [historial, desde, hasta, estado, cliente]);
 
+  // ---- Exportar CSV ----
   const handleExportCSV = () => {
     const headers = ['Cliente', 'Vehículo', 'Tipo', 'Monto', 'Cuota', 'Plazo', 'Estado', 'Fecha'];
     const rows = filtrados.map((h) => [h.cliente, h.vehiculo, h.tipo, h.monto, h.cuota, h.plazo, h.estado, h.fecha]);
@@ -62,9 +131,14 @@ function Historial() {
     URL.revokeObjectURL(url);
   };
 
+  if (loading) {
+    return <p style={{ color: 'rgba(255,255,255,0.6)', padding: 40, textAlign: 'center' }}>Cargando historial...</p>;
+  }
+
   return (
     <>
-      <div className="historial-filters fade-in">
+      {/* -------- Filtros -------- */}
+      <div className="historial-filters">
         <div className="filter-group">
           <label>Desde</label>
           <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
@@ -76,38 +150,38 @@ function Historial() {
         <div className="filter-group">
           <label>Estado</label>
           <select value={estado} onChange={(e) => setEstado(e.target.value)}>
-            <option value="Todos">Todos</option>
-            <option value="Aprobada">Aprobada</option>
-            <option value="En evaluación">En evaluación</option>
-            <option value="Rechazada">Rechazada</option>
+            <option>Todos</option>
+            <option>Aprobada</option>
+            <option>En evaluación</option>
+            <option>Rechazada</option>
           </select>
         </div>
         <div className="filter-group">
           <label>Cliente</label>
           <select value={cliente} onChange={(e) => setCliente(e.target.value)}>
-            <option value="Todos">Todos</option>
+            <option>Todos</option>
             {clientesUnicos.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c}>{c}</option>
             ))}
           </select>
         </div>
-        <button className="btn btn-primary export-btn" onClick={handleExportCSV}>
-          <Download size={16} /> Exportar CSV
+        <button className="btn export-btn" onClick={handleExportCSV}>
+          <Download size={15} /> Exportar CSV
         </button>
       </div>
 
-      <div className="panel glass-card chart-panel fade-in">
+      {/* -------- Chart -------- */}
+      <div className="glass-card chart-panel">
         <h3>Volumen de simulaciones por mes</h3>
         <div className="rechart-box">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={simulacionesPorMes} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-              <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-              <XAxis dataKey="mes" stroke="rgba(255,255,255,0.5)" tickLine={false} axisLine={false} />
-              <YAxis stroke="rgba(255,255,255,0.5)" tickLine={false} axisLine={false} />
+            <BarChart data={simulacionesPorMes}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+              <XAxis dataKey="mes" stroke="rgba(255,255,255,0.4)" fontSize={12} />
+              <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} />
               <Tooltip
-                contentStyle={{ background: '#10204a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 }}
-                labelStyle={{ color: '#F0F4FF' }}
-                itemStyle={{ color: '#60a5fa' }}
+                contentStyle={{ background: 'rgba(13,27,53,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, fontSize: 13 }}
+                itemStyle={{ color: '#f0f4ff' }}
               />
               <Bar dataKey="simulaciones" fill="#3b82f6" radius={[6, 6, 0, 0]} />
             </BarChart>
@@ -115,15 +189,16 @@ function Historial() {
         </div>
       </div>
 
+      {/* -------- Grid: Timeline + Table -------- */}
       <div className="historial-grid">
-        <div className="panel glass-card timeline-panel fade-in">
+        <div className="glass-card panel">
           <h3>Actividad reciente</h3>
           <div className="timeline">
             {historial.slice(0, 8).map((item) => {
               const Icon = timelineIcon[item.estado];
               return (
-                <div className="timeline-item" key={item.id}>
-                  <div className={`timeline-icon ${badgeClass[item.estado]}`}>
+                <div key={item.id} className="timeline-item">
+                  <div className={`timeline-icon ${item.estado === 'Aprobada' ? 'badge-green' : item.estado === 'Rechazada' ? 'badge-red' : 'badge-blue'}`}>
                     <Icon size={16} />
                   </div>
                   <div className="timeline-content">
@@ -138,13 +213,13 @@ function Historial() {
           </div>
         </div>
 
-        <div className="panel glass-card table-panel fade-in">
+        <div className="glass-card panel">
           <h3>Historial completo ({filtrados.length})</h3>
           <div className="table-wrap">
             <table className="historial-table">
               <thead>
                 <tr>
-                  <th><User size={14} /> Cliente</th>
+                  <th>Cliente</th>
                   <th>Vehículo</th>
                   <th>Tipo</th>
                   <th>Monto</th>
@@ -156,7 +231,7 @@ function Historial() {
               </thead>
               <tbody>
                 {filtrados.map((item, idx) => (
-                  <tr key={item.id} className={idx % 2 === 0 ? 'row-even' : 'row-odd'}>
+                  <tr key={item.id} className={idx % 2 === 0 ? 'row-even' : ''}>
                     <td>{item.cliente}</td>
                     <td>{item.vehiculo}</td>
                     <td>{item.tipo}</td>
@@ -169,7 +244,9 @@ function Historial() {
                 ))}
                 {filtrados.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="empty-row">No hay registros para los filtros seleccionados.</td>
+                    <td colSpan={8} className="empty-row">
+                      No hay registros para los filtros seleccionados.
+                    </td>
                   </tr>
                 )}
               </tbody>

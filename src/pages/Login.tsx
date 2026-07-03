@@ -1,5 +1,8 @@
-import { useEffect, useRef } from 'react'
+// src/pages/Login.tsx
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { signInWithEmailAndPassword } from 'firebase/auth'
+import { auth } from '../firebaseConfig'
 import { ShieldCheck } from 'lucide-react'
 import './Login.css'
 
@@ -27,6 +30,44 @@ function Login() {
   const navigate = useNavigate()
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
+  // Estado del formulario
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  // Función de login con Firebase
+  const handleLogin = async () => {
+    setError('')
+
+    if (!email || !password) {
+      setError('Por favor, complete todos los campos.')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password)
+      navigate('/dashboard')
+    } catch (err: any) {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        setError('Correo o contraseña incorrectos.')
+      } else if (err.code === 'auth/wrong-password') {
+        setError('Contraseña incorrecta.')
+      } else if (err.code === 'auth/invalid-email') {
+        setError('El correo electrónico no es válido.')
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Demasiados intentos fallidos. Intente más tarde.')
+      } else {
+        setError('Error al iniciar sesión: ' + err.message)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Canvas animación (se mantiene igual que el original)
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -58,7 +99,6 @@ function Login() {
     window.addEventListener('resize', onResize)
 
     const draw = () => {
-      // Background — nebula radial gradient
       const bg = ctx.createRadialGradient(
         width * 0.4, height * 0.35, 0,
         width * 0.5, height * 0.5, width * 0.85,
@@ -72,7 +112,6 @@ function Login() {
       ctx.fillStyle = bg
       ctx.fillRect(0, 0, width, height)
 
-      // Secondary nebula cloud
       const nebula = ctx.createRadialGradient(
         width * 0.7, height * 0.3, 0,
         width * 0.7, height * 0.3, width * 0.4,
@@ -83,7 +122,6 @@ function Login() {
       ctx.fillStyle = nebula
       ctx.fillRect(0, 0, width, height)
 
-      // Static stars
       for (const s of stars) {
         ctx.beginPath()
         ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2)
@@ -91,7 +129,6 @@ function Login() {
         ctx.fill()
       }
 
-      // Meteors
       for (const m of meteors) {
         const mag = Math.hypot(m.vx, m.vy)
         const nx = m.vx / mag
@@ -99,7 +136,6 @@ function Login() {
         const tailX = m.x - nx * m.length
         const tailY = m.y - ny * m.length
 
-        // Trail
         const trail = ctx.createLinearGradient(tailX, tailY, m.x, m.y)
         trail.addColorStop(0, 'rgba(180,150,255,0)')
         trail.addColorStop(1, 'rgba(220,210,255,1)')
@@ -110,7 +146,6 @@ function Login() {
         ctx.lineWidth = 1.5
         ctx.stroke()
 
-        // Head glow
         const glow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, 4)
         glow.addColorStop(0, 'rgba(230,220,255,0.95)')
         glow.addColorStop(1, 'rgba(180,150,255,0)')
@@ -163,21 +198,50 @@ function Login() {
         <h2 className="form-title">Bienvenido de vuelta</h2>
         <p className="form-subtitle">Ingresa tus credenciales para continuar</p>
 
+        {/* Mensaje de error */}
+        {error && (
+          <p style={{
+            color: '#f87171',
+            backgroundColor: 'rgba(248,113,113,0.1)',
+            border: '1px solid rgba(248,113,113,0.3)',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            fontSize: '13px',
+            textAlign: 'center',
+            marginBottom: '12px',
+          }}>
+            {error}
+          </p>
+        )}
+
         <div className="form-group">
-          <label>Usuario</label>
-          <input type="text" placeholder="Ingrese su usuario" />
+          <label>Correo electrónico</label>
+          <input
+            type="email"
+            placeholder="ejemplo@gmail.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
 
         <div className="form-group">
           <label>Contraseña</label>
-          <input type="password" placeholder="Ingrese su contraseña" />
+          <input
+            type="password"
+            placeholder="Ingrese su contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+          />
         </div>
 
         <button
           className="login-button"
-          onClick={() => navigate('/dashboard')}
+          onClick={handleLogin}
+          disabled={loading}
+          style={{ opacity: loading ? 0.6 : 1 }}
         >
-          Iniciar sesión
+          {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
         </button>
 
         <p className="secure-footer">

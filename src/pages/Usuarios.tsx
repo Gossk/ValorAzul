@@ -1,81 +1,92 @@
-import { useState } from 'react';
-import { Plus, ShieldAlert, X } from 'lucide-react';
-
+import { useEffect, useState } from 'react';
+import { ShieldAlert } from 'lucide-react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 import { CURRENT_USER } from '../components/Layout';
-import { usuarios as initialUsuarios, type Usuario } from '../data/mockData';
 import './Usuarios.css';
 
-const rolBadge: Record<Usuario['rol'], string> = {
-  Administrador: 'badge-purple',
-  Supervisor: 'badge-blue',
-  Asesor: 'badge-green',
-};
+// Todos los que se registran son Administradores
+interface UsuarioFirestore {
+  id: string; // uid de Firebase Auth
+  nombre: string;
+  email: string;
+  rol: 'Administrador';
+  usuario?: string;
+  fechaRegistro?: string;
+  activo: boolean;
+}
 
 function Usuarios() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>(initialUsuarios);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState<{ nombre: string; email: string; rol: Usuario['rol'] }>({
-    nombre: '',
-    email: '',
-    rol: 'Asesor',
-  });
+  const [usuarios, setUsuarios] = useState<UsuarioFirestore[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Cargar usuarios desde Firestore (colección "clientes" = los registrados)
+  useEffect(() => {
+    const fetchUsuarios = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'clientes'));
+        const lista: UsuarioFirestore[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          lista.push({
+            id: docSnap.id,
+            nombre: data.nombre || 'Sin nombre',
+            email: data.email || '',
+            rol: 'Administrador',
+            usuario: data.usuario || '',
+            fechaRegistro: data.fechaRegistro || '',
+            activo: data.estado !== 'Inactivo',
+          });
+        });
+        setUsuarios(lista);
+      } catch (err) {
+        console.error('Error cargando usuarios:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsuarios();
+  }, []);
 
   if (CURRENT_USER.role !== 'Administrador') {
     return (
-      <div className="panel glass-card access-denied fade-in">
-        <ShieldAlert size={40} className="glow" />
+      <div className="access-denied">
+        <ShieldAlert size={48} />
         <h2>Acceso restringido</h2>
         <p>Solo los usuarios con rol Administrador pueden ver esta sección.</p>
       </div>
     );
   }
 
-  const toggleActivo = (id: number) => {
-    setUsuarios((prev) => prev.map((u) => (u.id === id ? { ...u, activo: !u.activo } : u)));
-  };
-
-  const handleCrear = () => {
-    if (!form.nombre.trim() || !form.email.trim()) return;
-    const nuevo: Usuario = {
-      id: Math.max(0, ...usuarios.map((u) => u.id)) + 1,
-      nombre: form.nombre,
-      email: form.email,
-      rol: form.rol,
-      ultimoAcceso: 'Nunca',
-      activo: true,
-    };
-    setUsuarios((prev) => [nuevo, ...prev]);
-    setForm({ nombre: '', email: '', rol: 'Asesor' });
-    setShowModal(false);
-  };
+  if (loading) {
+    return <p style={{ color: 'rgba(255,255,255,0.6)', padding: 40, textAlign: 'center' }}>Cargando usuarios...</p>;
+  }
 
   return (
     <>
-      <div className="usuarios-header fade-in">
+      <div className="usuarios-header">
         <div>
           <h3>Usuarios del sistema</h3>
-          <p>{usuarios.length} usuarios registrados</p>
+          <p>{usuarios.length} usuario{usuarios.length !== 1 ? 's' : ''} registrado{usuarios.length !== 1 ? 's' : ''}</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          <Plus size={18} /> Nuevo Usuario
-        </button>
       </div>
 
-      <div className="panel glass-card fade-in">
+      <div className="glass-card panel">
         <table className="usuarios-table">
           <thead>
             <tr>
               <th>Nombre</th>
               <th>Email</th>
+              <th>Usuario</th>
               <th>Rol</th>
-              <th>Último acceso</th>
+              <th>Fecha de registro</th>
               <th>Estado</th>
-              <th>Activo</th>
             </tr>
           </thead>
           <tbody>
             {usuarios.map((u, idx) => (
-              <tr key={u.id} className={idx % 2 === 0 ? 'row-even' : 'row-odd'}>
+              <tr key={u.id} className={idx % 2 === 0 ? 'row-even' : ''}>
                 <td>
                   <div className="usuario-cell">
                     <div className="avatar-circle">{u.nombre.charAt(0)}</div>
@@ -83,60 +94,26 @@ function Usuarios() {
                   </div>
                 </td>
                 <td>{u.email}</td>
-                <td><span className={`badge ${rolBadge[u.rol]}`}>{u.rol}</span></td>
-                <td>{u.ultimoAcceso}</td>
+                <td>{u.usuario || '—'}</td>
+                <td><span className="badge badge-purple">{u.rol}</span></td>
+                <td>{u.fechaRegistro || '—'}</td>
                 <td>
                   <span className={`badge ${u.activo ? 'badge-green' : 'badge-red'}`}>
                     {u.activo ? 'Activo' : 'Inactivo'}
                   </span>
                 </td>
-                <td>
-                  <button
-                    className={`switch ${u.activo ? 'on' : ''}`}
-                    onClick={() => toggleActivo(u.id)}
-                    aria-label="Activar o desactivar usuario"
-                  >
-                    <span className="switch-handle" />
-                  </button>
-                </td>
               </tr>
             ))}
+            {usuarios.length === 0 && (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'rgba(255,255,255,0.5)' }}>
+                  No hay usuarios registrados aún. Regístrate en /register para aparecer aquí.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
-
-      {showModal && (
-        <div className="drawer-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal glass-card" onClick={(e) => e.stopPropagation()}>
-            <button className="drawer-close" onClick={() => setShowModal(false)}><X size={20} /></button>
-            <h2>Nuevo usuario</h2>
-
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Nombre completo</label>
-                <input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej. Pedro Salinas" />
-              </div>
-              <div className="form-group">
-                <label>Email</label>
-                <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Ej. correo@valorazul.com" />
-              </div>
-              <div className="form-group full">
-                <label>Rol</label>
-                <select value={form.rol} onChange={(e) => setForm({ ...form, rol: e.target.value as Usuario['rol'] })}>
-                  <option value="Administrador">Administrador</option>
-                  <option value="Supervisor">Supervisor</option>
-                  <option value="Asesor">Asesor</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="drawer-actions">
-              <button className="btn btn-primary" onClick={handleCrear}>Crear usuario</button>
-              <button className="btn" onClick={() => setShowModal(false)}>Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

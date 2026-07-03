@@ -371,8 +371,8 @@ export default function Simulador() {
           <p className="menu-title">PRINCIPAL</p>
           <nav className="menu">
             <Link to="/dashboard"><Home size={18} /> Dashboard</Link>
-            <Link to="/clientes"><User size={18} /> Registro de Clientes</Link>
-            <Link to="/simulador" className="active"><Car size={18} /> Simulador de Crédito</Link>
+            <Link to="/clientes"><User size={18} /> Clientes</Link>
+            <Link to="/simulador" className="active"><Car size={18} /> Simulador </Link>
             <Link to="/historial"><FileText size={18} /> Historial</Link>
             <Link to="/ayuda"><HelpCircle size={18} /> Ayuda</Link>
           </nav>

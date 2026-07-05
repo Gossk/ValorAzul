@@ -58,6 +58,9 @@ function Register() {
       const user = userCredential.user
 
       // 2) Guardar datos adicionales en Firestore (colección "clientes")
+      //    Todo usuario que se registra desde la web es SIEMPRE "Cliente".
+      //    Los administradores se crean manualmente en la colección `usuarios`
+      //    (ver README → sección "Crear un administrador").
       await setDoc(doc(db, 'clientes', user.uid), {
         nombre: form.nombre,
         dni: form.dni,
@@ -66,8 +69,18 @@ function Register() {
         usuario: form.usuario,
         creditosActivos: 0,
         estado: 'Pendiente',
+        rol: 'Cliente',
         fechaRegistro: new Date().toLocaleDateString('es-PE'),
         uid: user.uid,
+      })
+
+      // 2.b) Fuente única de verdad para roles: colección `usuarios/{uid}`.
+      await setDoc(doc(db, 'usuarios', user.uid), {
+        uid: user.uid,
+        nombre: form.nombre,
+        email: form.email,
+        rol: 'Cliente',
+        fechaRegistro: new Date().toLocaleDateString('es-PE'),
       })
 
       // 3) Redirigir al login tras registro exitoso

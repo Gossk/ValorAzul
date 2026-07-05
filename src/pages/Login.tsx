@@ -2,9 +2,31 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '../firebaseConfig'
+import { doc, getDoc } from 'firebase/firestore'
+import { auth, db } from '../firebaseConfig'
 import { ShieldCheck } from 'lucide-react'
 import './Login.css'
+
+/**
+ * Resuelve el rol del usuario tras el login para decidir a dónde llevarlo:
+ *   - Administrador → /dashboard
+ *   - Cliente (default) → /inicio
+ */
+async function resolverRolYRedirigir(uid: string): Promise<string> {
+  try {
+    const uSnap = await getDoc(doc(db, 'usuarios', uid))
+    if (uSnap.exists() && (uSnap.data() as any).rol === 'Administrador') {
+      return '/dashboard'
+    }
+    const cSnap = await getDoc(doc(db, 'clientes', uid))
+    if (cSnap.exists() && (cSnap.data() as any).rol === 'Administrador') {
+      return '/dashboard'
+    }
+  } catch (e) {
+    console.warn('No se pudo resolver el rol post-login:', e)
+  }
+  return '/inicio'
+}
 
 interface Meteor {
   x: number
@@ -48,8 +70,9 @@ function Login() {
     setLoading(true)
 
     try {
-      await signInWithEmailAndPassword(auth, email, password)
-      navigate('/dashboard')
+      const cred = await signInWithEmailAndPassword(auth, email, password)
+      const destino = await resolverRolYRedirigir(cred.user.uid)
+      navigate(destino)
     } catch (err: any) {
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         setError('Correo o contraseña incorrectos.')

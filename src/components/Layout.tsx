@@ -16,12 +16,26 @@ import {
   X,
 } from 'lucide-react';
 
+import { useAuth, type Rol } from '../context/AuthContext';
 import './Layout.css';
 
-export const CURRENT_USER = {
-  name: 'Administrador',
-  email: 'admin@valorazul.com',
-  role: 'Administrador' as const,
+/**
+ * Referencia mutable con el usuario actualmente logueado.
+ *
+ * Se mantiene EXPORTADA por retrocompatibilidad (algunos módulos como
+ * `pages/Usuarios.tsx` la importan). El objeto se sobreescribe en tiempo
+ * de ejecución dentro de <Layout /> cuando el AuthProvider carga el perfil.
+ *
+ * Para código nuevo, se recomienda consumir directamente `useAuth()`.
+ */
+export const CURRENT_USER: {
+  name: string;
+  email: string;
+  role: Rol;
+} = {
+  name: 'Invitado',
+  email: '',
+  role: 'Cliente',
 };
 
 interface Meteor {
@@ -49,22 +63,34 @@ interface NavItem {
   icon: typeof Home;
   label: string;
   badge?: number;
+  /** Roles autorizados para ver este enlace. Si se omite → visible para todos. */
+  roles?: Rol[];
 }
 
+/**
+ * Menú principal.
+ * - "Inicio"     → visible SIEMPRE (pantalla de bienvenida del Cliente).
+ * - "Dashboard/Clientes/Historial/Ayuda" → solo Administrador.
+ * - "Simulador" → visible SIEMPRE (Cliente y Administrador).
+ *
+ * Nota: los items no se eliminan del código; solo se filtran por rol.
+ */
 const mainNav: NavItem[] = [
-  { to: '/dashboard', icon: Home, label: 'Dashboard' },
-  { to: '/clientes', icon: User, label: 'Clientes' },
-  { to: '/simulador', icon: Car, label: 'Simulador' },
-  { to: '/historial', icon: FileText, label: 'Historial', badge: 3 },
-  { to: '/ayuda', icon: HelpCircle, label: 'Ayuda' },
+  { to: '/inicio',    icon: Home,       label: 'Inicio' },
+  { to: '/dashboard', icon: Home,       label: 'Dashboard',                     roles: ['Administrador'] },
+  { to: '/clientes',  icon: User,       label: 'Clientes',                      roles: ['Administrador'] },
+  { to: '/simulador', icon: Car,        label: 'Simulador' },
+  { to: '/historial', icon: FileText,   label: 'Historial', badge: 3,           roles: ['Administrador'] },
+  { to: '/ayuda',     icon: HelpCircle, label: 'Ayuda',                         roles: ['Administrador'] },
 ];
 
 const configNav: NavItem[] = [
-  { to: '/usuarios', icon: Users, label: 'Usuarios' },
-  { to: '/configuracion', icon: Settings, label: 'Configuración' },
+  { to: '/usuarios',      icon: Users,    label: 'Usuarios',      roles: ['Administrador'] },
+  { to: '/configuracion', icon: Settings, label: 'Configuración', roles: ['Administrador'] },
 ];
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
+  '/inicio':       { title: 'Inicio',         subtitle: 'Bienvenido a Valor Azul' },
   '/dashboard':    { title: 'Dashboard',      subtitle: 'Resumen general del sistema' },
   '/clientes':     { title: 'Clientes',       subtitle: 'Gestión de clientes registrados' },
   '/simulador':    { title: 'Simulador',      subtitle: 'Simulador de crédito vehicular' },
@@ -77,10 +103,28 @@ const pageTitles: Record<string, { title: string; subtitle: string }> = {
 function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { perfil, logout } = useAuth();
   const { title, subtitle } = pageTitles[location.pathname] ?? { title: '', subtitle: '' };
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Datos "en vivo" del usuario. Si aún no cargó el perfil, se usan defaults.
+  const currentName  = perfil?.nombre ?? 'Invitado';
+  const currentEmail = perfil?.email  ?? '';
+  const currentRole: Rol = perfil?.rol ?? 'Cliente';
+
+  // Se sincroniza el objeto exportado para compatibilidad con módulos legados.
+  useEffect(() => {
+    CURRENT_USER.name  = currentName;
+    CURRENT_USER.email = currentEmail;
+    CURRENT_USER.role  = currentRole;
+  }, [currentName, currentEmail, currentRole]);
+
+  const handleLogout = async () => {
+    try { await logout(); } catch {}
+    navigate('/login');
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -179,9 +223,11 @@ function Layout() {
     };
   }, []);
 
-  const visibleConfigNav = configNav.filter(
-    (item) => item.to !== '/usuarios' || CURRENT_USER.role === 'Administrador'
-  );
+  // Filtro por rol: un item se muestra si no declara `roles`
+  // o si el rol del usuario está incluido en la lista.
+  const puedeVer = (item: NavItem) => !item.roles || item.roles.includes(currentRole);
+  const visibleMainNav   = mainNav.filter(puedeVer);
+  const visibleConfigNav = configNav.filter(puedeVer);
 
   const renderLink = (item: NavItem) => {
     const Icon = item.icon;
@@ -243,10 +289,14 @@ function Layout() {
             </div>
 
             <p className="menu-title">PRINCIPAL</p>
-            <nav className="menu">{mainNav.map(renderLink)}</nav>
+            <nav className="menu">{visibleMainNav.map(renderLink)}</nav>
 
-            <p className="menu-title config">CONFIGURACIÓN</p>
-            <nav className="menu">{visibleConfigNav.map(renderLink)}</nav>
+            {visibleConfigNav.length > 0 && (
+              <>
+                <p className="menu-title config">CONFIGURACIÓN</p>
+                <nav className="menu">{visibleConfigNav.map(renderLink)}</nav>
+              </>
+            )}
           </div>
 
           <div className="sidebar-footer">
@@ -255,13 +305,14 @@ function Layout() {
               <span className="link-label">Colapsar</span>
             </button>
 
-            <div className="user-box" data-tooltip={CURRENT_USER.name}>
-              <div className="avatar">{CURRENT_USER.name.charAt(0)}</div>
+            <div className="user-box" data-tooltip={currentName}>
+              <div className="avatar">{currentName.charAt(0).toUpperCase()}</div>
               <div className="link-label">
-                <strong>{CURRENT_USER.name}</strong>
-                <p>{CURRENT_USER.email}</p>
+                <strong>{currentName}</strong>
+                <p>{currentEmail}</p>
+                <p style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>{currentRole}</p>
               </div>
-              <button className="logout-btn link-label" onClick={() => navigate('/')} title="Cerrar sesión">
+              <button className="logout-btn link-label" onClick={handleLogout} title="Cerrar sesión">
                 <LogOut size={16} />
               </button>
             </div>
@@ -287,8 +338,8 @@ function Layout() {
                 <Bell size={20} />
                 <span className="ping"></span>
               </button>
-              <div className="admin-avatar">{CURRENT_USER.name.charAt(0)}</div>
-              <span className="header-user">{CURRENT_USER.name}</span>
+              <div className="admin-avatar">{currentName.charAt(0).toUpperCase()}</div>
+              <span className="header-user">{currentName}</span>
             </div>
           </header>
 

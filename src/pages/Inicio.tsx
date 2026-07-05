@@ -1,96 +1,223 @@
 // src/pages/Inicio.tsx
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Car, Sparkles } from 'lucide-react'
+import {
+  Bell,
+  Calculator,
+  Car,
+  CheckCircle2,
+  FileText,
+  HelpCircle,
+  Sparkles,
+  UserCircle,
+} from 'lucide-react'
+import {
+  collection,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  where,
+} from 'firebase/firestore'
+import { db } from '../firebaseConfig'
 import { useAuth } from '../context/AuthContext'
 import './Inicio.css'
 
-/**
- * Pantalla de bienvenida.
- * - Muestra un saludo personalizado.
- * - Ofrece un botón para ir al simulador.
- * - Redirige automáticamente al /simulador tras unos segundos
- *   (se puede cancelar pulsando cualquier botón).
- */
+interface Aviso {
+  icon: typeof Bell
+  titulo: string
+  detalle: string
+  tono: 'info' | 'ok' | 'warn'
+}
+
+const AVISOS_DEFAULT: Aviso[] = [
+  {
+    icon: Sparkles,
+    titulo: '¡Bienvenido a Valor Azul!',
+    detalle: 'Ya puedes simular tu crédito vehicular en pocos pasos.',
+    tono: 'info',
+  },
+  {
+    icon: CheckCircle2,
+    titulo: 'Tus datos están seguros',
+    detalle: 'Toda la información viaja encriptada y se almacena de forma privada.',
+    tono: 'ok',
+  },
+  {
+    icon: Bell,
+    titulo: 'Tip financiero',
+    detalle: 'Una cuota inicial mayor al 20% reduce significativamente los intereses.',
+    tono: 'warn',
+  },
+]
+
 function Inicio() {
   const navigate = useNavigate()
   const { perfil } = useAuth()
-  const [segundos, setSegundos] = useState(5)
-  const [autoRedirect, setAutoRedirect] = useState(true)
 
+  const [totalSimulaciones, setTotalSimulaciones] = useState<number | null>(null)
+  const [ultimaFecha, setUltimaFecha] = useState<string>('—')
+
+  // Carga rápida de un pequeño resumen de las simulaciones del cliente.
   useEffect(() => {
-    if (!autoRedirect) return
-    if (segundos <= 0) {
-      navigate('/simulador')
-      return
+    let cancel = false
+    async function cargar() {
+      if (!perfil?.uid) return
+      try {
+        const q1 = query(
+          collection(db, 'simulaciones'),
+          where('uid', '==', perfil.uid),
+        )
+        const snap = await getDocs(q1)
+        if (cancel) return
+        setTotalSimulaciones(snap.size)
+
+        const q2 = query(
+          collection(db, 'simulaciones'),
+          where('uid', '==', perfil.uid),
+          orderBy('creadoEn', 'desc'),
+          limit(1),
+        )
+        try {
+          const ult = await getDocs(q2)
+          if (!ult.empty && !cancel) {
+            const d = ult.docs[0].data() as any
+            setUltimaFecha(d.fecha || '—')
+          }
+        } catch {
+          /* si falta el índice compuesto, se ignora silenciosamente */
+        }
+      } catch (err) {
+        console.warn('[Inicio] No se pudo leer simulaciones:', err)
+        setTotalSimulaciones(0)
+      }
     }
-    const t = setTimeout(() => setSegundos((s) => s - 1), 1000)
-    return () => clearTimeout(t)
-  }, [segundos, autoRedirect, navigate])
+    cargar()
+    return () => { cancel = true }
+  }, [perfil?.uid])
+
+  const primerNombre = perfil?.nombre?.split(' ')[0] ?? ''
 
   return (
     <div className="inicio-wrapper">
-      <div className="inicio-card">
-        <div className="inicio-logo">
-          <svg width="56" height="56" viewBox="0 0 32 32" fill="none">
-            <defs>
-              <linearGradient id="inicioLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#818CF8" />
-                <stop offset="50%" stopColor="#6366F1" />
-                <stop offset="100%" stopColor="#3B82F6" />
-              </linearGradient>
-            </defs>
-            <path d="M2 4 L16 28 L30 4 L24 4 L16 18 L8 4 Z" fill="url(#inicioLogoGrad)" />
-          </svg>
-        </div>
-
+      <div className="inicio-hero">
         <span className="inicio-badge">
           <Sparkles size={14} /> Bienvenido a Valor Azul
         </span>
-
         <h1 className="inicio-title">
-          ¡Hola{perfil?.nombre ? `, ${perfil.nombre.split(' ')[0]}` : ''}!
+          ¡Hola{primerNombre ? `, ${primerNombre}` : ''}!
         </h1>
-
         <p className="inicio-subtitle">
-          Simula tu crédito vehicular en minutos. Descubre cuánto podrías pagar,
-          revisa el cronograma completo y encuentra el plan que mejor se adapte a ti.
+          Simula tu crédito vehicular en minutos, revisa el cronograma completo
+          y encuentra el plan que mejor se adapte a ti. Todo en un solo lugar.
         </p>
 
         <div className="inicio-actions">
           <button className="inicio-primary" onClick={() => navigate('/simulador')}>
-            <Car size={18} /> Ir al Simulador
+            <Calculator size={18} /> Nueva simulación
           </button>
-
-          {autoRedirect ? (
-            <button
-              className="inicio-secondary"
-              onClick={() => setAutoRedirect(false)}
-              type="button"
-            >
-              Cancelar redirección ({segundos}s)
-            </button>
-          ) : (
-            <span className="inicio-hint">Redirección automática cancelada</span>
-          )}
-        </div>
-
-        <div className="inicio-features">
-          <div className="feature">
-            <strong>Rápido</strong>
-            <span>Resultados al instante</span>
-          </div>
-          <div className="feature">
-            <strong>Seguro</strong>
-            <span>Datos encriptados</span>
-          </div>
-          <div className="feature">
-            <strong>Preciso</strong>
-            <span>Cálculo con TEA real</span>
-          </div>
+          <button className="inicio-secondary" onClick={() => navigate('/mis-simulaciones')}>
+            <FileText size={18} /> Ver mis simulaciones
+          </button>
         </div>
       </div>
+
+      {/* Resumen rápido */}
+      <div className="inicio-stats">
+        <div className="inicio-stat">
+          <span className="inicio-stat-label">Simulaciones realizadas</span>
+          <strong className="inicio-stat-value">
+            {totalSimulaciones === null ? '…' : totalSimulaciones}
+          </strong>
+        </div>
+        <div className="inicio-stat">
+          <span className="inicio-stat-label">Última simulación</span>
+          <strong className="inicio-stat-value inicio-stat-small">{ultimaFecha}</strong>
+        </div>
+        <div className="inicio-stat">
+          <span className="inicio-stat-label">Perfil</span>
+          <strong className="inicio-stat-value inicio-stat-small">{perfil?.rol ?? 'Cliente'}</strong>
+        </div>
+      </div>
+
+      {/* Accesos rápidos */}
+      <section className="inicio-section">
+        <h2 className="inicio-section-title">Accesos rápidos</h2>
+        <div className="inicio-quick">
+          <QuickCard
+            icon={<Car size={22} />}
+            title="Simulador"
+            desc="Calcula cuota, TCEA y cronograma de tu crédito vehicular."
+            onClick={() => navigate('/simulador')}
+            color="blue"
+          />
+          <QuickCard
+            icon={<FileText size={22} />}
+            title="Mis simulaciones"
+            desc="Revisa el historial de tus simulaciones anteriores."
+            onClick={() => navigate('/mis-simulaciones')}
+            color="green"
+          />
+          <QuickCard
+            icon={<HelpCircle size={22} />}
+            title="Ayuda (FAQ)"
+            desc="Resuelve dudas sobre créditos, tasas y conceptos financieros."
+            onClick={() => navigate('/ayuda')}
+            color="purple"
+          />
+          <QuickCard
+            icon={<UserCircle size={22} />}
+            title="Mi perfil"
+            desc="Actualiza tus datos personales y de contacto."
+            onClick={() => navigate('/perfil')}
+            color="orange"
+          />
+        </div>
+      </section>
+
+      {/* Novedades / Avisos */}
+      <section className="inicio-section">
+        <h2 className="inicio-section-title">Novedades y avisos</h2>
+        <div className="inicio-avisos">
+          {AVISOS_DEFAULT.map((a, i) => {
+            const Icon = a.icon
+            return (
+              <div key={i} className={`inicio-aviso tono-${a.tono}`}>
+                <div className="inicio-aviso-icon"><Icon size={18} /></div>
+                <div>
+                  <strong>{a.titulo}</strong>
+                  <p>{a.detalle}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </section>
     </div>
+  )
+}
+
+function QuickCard({
+  icon,
+  title,
+  desc,
+  onClick,
+  color,
+}: {
+  icon: React.ReactNode
+  title: string
+  desc: string
+  onClick: () => void
+  color: 'blue' | 'green' | 'purple' | 'orange'
+}) {
+  return (
+    <button className={`inicio-quick-card qc-${color}`} onClick={onClick} type="button">
+      <div className="inicio-quick-icon">{icon}</div>
+      <div className="inicio-quick-text">
+        <strong>{title}</strong>
+        <span>{desc}</span>
+      </div>
+    </button>
   )
 }
 

@@ -16,6 +16,8 @@ import Historial from './pages/Historial'
 import Ayuda from './pages/Ayuda'
 import Usuarios from './pages/Usuarios'
 import Configuracion from './pages/Configuracion'
+import MisSimulaciones from './pages/MisSimulaciones'
+import Perfil from './pages/Perfil'
 
 import './index.css'
 
@@ -47,8 +49,20 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               </RequireAuth>
             }
           >
-            {/* Inicio → accesible para Cliente y Administrador */}
+            {/* Accesibles para Cliente y Administrador */}
             <Route path="/inicio" element={<Inicio />} />
+            <Route path="/ayuda"  element={<Ayuda />} />
+            <Route path="/perfil" element={<Perfil />} />
+
+            {/* Solo Cliente (los admins tienen su propio Historial) */}
+            <Route
+              path="/mis-simulaciones"
+              element={
+                <RequireRole roles={['Cliente', 'Administrador']}>
+                  <MisSimulaciones />
+                </RequireRole>
+              }
+            />
 
             {/* Rutas restringidas a Administrador */}
             <Route
@@ -72,14 +86,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               element={
                 <RequireRole roles={['Administrador']}>
                   <Historial />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/ayuda"
-              element={
-                <RequireRole roles={['Administrador']}>
-                  <Ayuda />
                 </RequireRole>
               }
             />

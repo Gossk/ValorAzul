@@ -1,8 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { onAuthStateChanged, signOut, type User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
 import {
   Bell,
   Car,
@@ -15,32 +12,32 @@ import {
   Menu,
   Settings,
   User,
+  UserCircle,
   Users,
   X,
 } from 'lucide-react';
 
+import { useAuth, type Rol } from '../context/AuthContext';
 import './Layout.css';
 
-// ---------- Tipos exportados ----------
-export interface CurrentUser {
+/**
+ * Referencia mutable con el usuario actualmente logueado.
+ *
+ * Se mantiene EXPORTADA por retrocompatibilidad (algunos módulos como
+ * `pages/Usuarios.tsx` la importan). El objeto se sobreescribe en tiempo
+ * de ejecución dentro de <Layout /> cuando el AuthProvider carga el perfil.
+ *
+ * Para código nuevo, se recomienda consumir directamente `useAuth()`.
+ */
+export const CURRENT_USER: {
   name: string;
   email: string;
-  role: 'Administrador';
-  uid: string;
-}
-
-// Estado inicial placeholder (se llena en useEffect)
-const DEFAULT_USER: CurrentUser = {
-  name: 'Cargando...',
+  role: Rol;
+} = {
+  name: 'Invitado',
   email: '',
-  role: 'Administrador',
-  uid: '',
+  role: 'Cliente',
 };
-
-// Exportamos una variable mutable para que Configuracion y Usuarios lo lean
-export let CURRENT_USER: CurrentUser = { ...DEFAULT_USER };
-
-// ---------- Meteor animation ----------
 
 interface Meteor {
   x: number;
@@ -62,88 +59,79 @@ function spawnMeteor(width: number): Meteor {
   };
 }
 
-// ---------- Nav config ----------
-
 interface NavItem {
   to: string;
   icon: typeof Home;
   label: string;
   badge?: number;
+  /** Roles autorizados para ver este enlace. Si se omite → visible para todos. */
+  roles?: Rol[];
 }
 
+/**
+ * Menú principal.
+ *
+ * Cliente ve:            Inicio · Simulador · Mis Simulaciones · Ayuda   (+ Mi Perfil en configuración)
+ * Administrador ve:      Inicio · Dashboard · Clientes · Simulador · Historial · Ayuda
+ *                        (+ Usuarios · Configuración · Mi Perfil en configuración)
+ *
+ * Los items se declaran una sola vez y se filtran por el campo `roles`.
+ */
 const mainNav: NavItem[] = [
-  { to: '/dashboard', icon: Home, label: 'Dashboard' },
-  { to: '/clientes', icon: User, label: 'Clientes' },
-  { to: '/simulador', icon: Car, label: 'Simulador' },
-  { to: '/historial', icon: FileText, label: 'Historial', badge: 3 },
-  { to: '/ayuda', icon: HelpCircle, label: 'Ayuda' },
+  { to: '/inicio',            icon: Home,       label: 'Inicio' },
+  { to: '/dashboard',         icon: Home,       label: 'Dashboard',        roles: ['Administrador'] },
+  { to: '/clientes',          icon: User,       label: 'Clientes',         roles: ['Administrador'] },
+  { to: '/simulador',         icon: Car,        label: 'Simulador' },
+  { to: '/mis-simulaciones',  icon: FileText,   label: 'Mis Simulaciones', roles: ['Cliente'] },
+  { to: '/historial',         icon: FileText,   label: 'Historial',        badge: 3, roles: ['Administrador'] },
+  { to: '/ayuda',             icon: HelpCircle, label: 'Ayuda' },
 ];
 
 const configNav: NavItem[] = [
-  { to: '/usuarios', icon: Users, label: 'Usuarios' },
-  { to: '/configuracion', icon: Settings, label: 'Configuración' },
+  { to: '/usuarios',      icon: Users,      label: 'Usuarios',      roles: ['Administrador'] },
+  { to: '/configuracion', icon: Settings,   label: 'Configuración', roles: ['Administrador'] },
+  { to: '/perfil',        icon: UserCircle, label: 'Mi Perfil' }, // visible para todos
 ];
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
-  '/dashboard': { title: 'Dashboard', subtitle: 'Resumen general del sistema' },
-  '/clientes': { title: 'Clientes', subtitle: 'Gestión de clientes registrados' },
-  '/simulador': { title: 'Simulador', subtitle: 'Simulador de crédito vehicular' },
-  '/historial': { title: 'Historial', subtitle: 'Registro de simulaciones y créditos' },
-  '/ayuda': { title: 'Ayuda', subtitle: 'Centro de soporte y preguntas frecuentes' },
-  '/usuarios': { title: 'Usuarios', subtitle: 'Gestión de usuarios del sistema' },
-  '/configuracion': { title: 'Configuración', subtitle: 'Administra tu perfil, empresa y preferencias' },
+  '/inicio':           { title: 'Inicio',           subtitle: 'Bienvenido a Valor Azul' },
+  '/dashboard':        { title: 'Dashboard',        subtitle: 'Resumen general del sistema' },
+  '/clientes':         { title: 'Clientes',         subtitle: 'Gestión de clientes registrados' },
+  '/simulador':        { title: 'Simulador',        subtitle: 'Simulador de crédito vehicular' },
+  '/mis-simulaciones': { title: 'Mis Simulaciones', subtitle: 'Tu historial personal de simulaciones' },
+  '/historial':        { title: 'Historial',        subtitle: 'Registro de simulaciones y créditos' },
+  '/ayuda':            { title: 'Ayuda',            subtitle: 'Centro de soporte y preguntas frecuentes' },
+  '/usuarios':         { title: 'Usuarios',         subtitle: 'Gestión de usuarios del sistema' },
+  '/configuracion':    { title: 'Configuración',    subtitle: 'Administra tu perfil, empresa y preferencias' },
+  '/perfil':           { title: 'Mi Perfil',        subtitle: 'Actualiza tus datos personales' },
 };
 
 function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { perfil, logout } = useAuth();
   const { title, subtitle } = pageTitles[location.pathname] ?? { title: '', subtitle: '' };
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<CurrentUser>({ ...DEFAULT_USER });
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // ---- Auth listener: carga datos del usuario logueado desde Firestore ----
+  // Datos "en vivo" del usuario. Si aún no cargó el perfil, se usan defaults.
+  const currentName  = perfil?.nombre ?? 'Invitado';
+  const currentEmail = perfil?.email  ?? '';
+  const currentRole: Rol = perfil?.rol ?? 'Cliente';
+
+  // Se sincroniza el objeto exportado para compatibilidad con módulos legados.
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (!firebaseUser) {
-        navigate('/login');
-        return;
-      }
+    CURRENT_USER.name  = currentName;
+    CURRENT_USER.email = currentEmail;
+    CURRENT_USER.role  = currentRole;
+  }, [currentName, currentEmail, currentRole]);
 
-      // Buscar perfil en colección "clientes" (donde Register guarda datos)
-      const profileDoc = await getDoc(doc(db, 'clientes', firebaseUser.uid));
-      let name = 'Administrador';
-      let email = firebaseUser.email || '';
-
-      if (profileDoc.exists()) {
-        const data = profileDoc.data();
-        name = data.nombre || name;
-        email = data.email || email;
-      }
-
-      const user: CurrentUser = {
-        name,
-        email,
-        role: 'Administrador',
-        uid: firebaseUser.uid,
-      };
-
-      // Actualizar la variable exportada para otros componentes
-      CURRENT_USER = user;
-      setCurrentUser(user);
-    });
-
-    return () => unsubscribe();
-  }, [navigate]);
-
-  // ---- Logout ----
   const handleLogout = async () => {
-    await signOut(auth);
+    try { await logout(); } catch {}
     navigate('/login');
   };
 
-  // ---- Canvas animation (identical to original) ----
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -241,9 +229,11 @@ function Layout() {
     };
   }, []);
 
-  const visibleConfigNav = configNav.filter(
-    (item) => item.to !== '/usuarios' || CURRENT_USER.role === 'Administrador'
-  );
+  // Filtro por rol: un item se muestra si no declara `roles`
+  // o si el rol del usuario está incluido en la lista.
+  const puedeVer = (item: NavItem) => !item.roles || item.roles.includes(currentRole);
+  const visibleMainNav   = mainNav.filter(puedeVer);
+  const visibleConfigNav = configNav.filter(puedeVer);
 
   const renderLink = (item: NavItem) => {
     const Icon = item.icon;
@@ -252,110 +242,114 @@ function Layout() {
       <Link
         key={item.to}
         to={item.to}
-        className={`nav-link ${active ? 'active' : ''}`}
+        className={active ? 'active' : ''}
+        data-tooltip={item.label}
         onClick={() => setMobileOpen(false)}
       >
-        <Icon size={20} />
-        {!collapsed && <span>{item.label}</span>}
-        {item.badge && !collapsed ? <span className="nav-badge">{item.badge}</span> : null}
+        <Icon size={18} />
+        <span className="link-label">{item.label}</span>
+        {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
       </Link>
     );
   };
 
   return (
     <>
-      {/* Canvas background */}
-      <canvas ref={canvasRef} className="bg-canvas" />
+      {/* Canvas fuera del grid — z-index 0 en el root stacking context */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: -1,
+          pointerEvents: 'none',
+        }}
+      />
 
-      <div className="app-layout">
-        {/* Mobile hamburger */}
-        <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)}>
-          <Menu size={24} />
-        </button>
-
-        {mobileOpen && (
-          <div className="mobile-overlay" onClick={() => setMobileOpen(false)} />
-        )}
-
-        {/* Sidebar */}
-        <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'open' : ''}`}>
-          <div className="sidebar-top">
-            <button className="mobile-close" onClick={() => setMobileOpen(false)}>
-              <X size={22} />
-            </button>
+      <div className={`app-layout ${collapsed ? 'sidebar-collapsed' : ''}`}>
+        <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
+          <div>
             <div className="brand">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                <defs>
-                  <linearGradient id="sidebarLogo" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#818CF8" />
-                    <stop offset="50%" stopColor="#6366F1" />
-                    <stop offset="100%" stopColor="#3B82F6" />
-                  </linearGradient>
-                </defs>
-                <path d="M2 4 L16 28 L30 4 L24 4 L16 18 L8 4 Z" fill="url(#sidebarLogo)" />
-              </svg>
-              {!collapsed && (
-                <div className="brand-text">
-                  <span className="brand-name">VALOR</span>
-                  <span className="brand-sub">AZUL</span>
+              <div className="logo-container">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="sidebarLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#818CF8" />
+                      <stop offset="50%" stopColor="#6366F1" />
+                      <stop offset="100%" stopColor="#3B82F6" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M2 4 L16 28 L30 4 L24 4 L16 18 L8 4 Z" fill="url(#sidebarLogoGrad)" />
+                </svg>
+                <div className="logo-text">
+                  <span className="logo-name">VALOR</span>
+                  <span className="logo-sub">AZUL</span>
                 </div>
-              )}
+              </div>
+              <button className="mobile-close" onClick={() => setMobileOpen(false)}>
+                <X size={20} />
+              </button>
             </div>
-            <button
-              className="collapse-btn desktop-only"
-              onClick={() => setCollapsed((c) => !c)}
-            >
-              {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
-            </button>
+
+            <p className="menu-title">PRINCIPAL</p>
+            <nav className="menu">{visibleMainNav.map(renderLink)}</nav>
+
+            {visibleConfigNav.length > 0 && (
+              <>
+                <p className="menu-title config">CONFIGURACIÓN</p>
+                <nav className="menu">{visibleConfigNav.map(renderLink)}</nav>
+              </>
+            )}
           </div>
 
-          <nav className="sidebar-nav">
-            <div className="nav-section">
-              {!collapsed && <span className="nav-section-label">MENÚ</span>}
-              {mainNav.map(renderLink)}
-            </div>
-            <div className="nav-section">
-              {!collapsed && <span className="nav-section-label">CONFIGURACIÓN</span>}
-              {visibleConfigNav.map(renderLink)}
-            </div>
-          </nav>
-
-          <div className="sidebar-bottom">
-            <div className="user-card">
-              <div className="avatar-circle">
-                {currentUser.name.charAt(0).toUpperCase()}
-              </div>
-              {!collapsed && (
-                <div className="user-info">
-                  <strong>{currentUser.name}</strong>
-                  <span>{currentUser.role}</span>
-                </div>
-              )}
-            </div>
-            <button className="logout-btn" onClick={handleLogout} title="Cerrar sesión">
-              <LogOut size={18} />
-              {!collapsed && <span>Salir</span>}
+          <div className="sidebar-footer">
+            <button className="collapse-btn" onClick={() => setCollapsed((c) => !c)} title="Colapsar menú">
+              {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+              <span className="link-label">Colapsar</span>
             </button>
+
+            <div className="user-box" data-tooltip={currentName}>
+              <div className="avatar">{currentName.charAt(0).toUpperCase()}</div>
+              <div className="link-label">
+                <strong>{currentName}</strong>
+                <p>{currentEmail}</p>
+                <p style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>{currentRole}</p>
+              </div>
+              <button className="logout-btn link-label" onClick={handleLogout} title="Cerrar sesión">
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
         </aside>
 
-        {/* Main content */}
-        <main className={`main ${collapsed ? 'collapsed' : ''}`}>
-          <header className="page-header">
-            <div>
-              <h1 className="page-title">{title}</h1>
-              <p className="page-subtitle">{subtitle}</p>
-            </div>
-            <div className="header-actions">
-              <button className="icon-btn" title="Notificaciones">
-                <Bell size={20} />
+        {mobileOpen && <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
+
+        <main className="main">
+          <header className="header">
+            <div className="header-left">
+              <button className="icon-btn menu-toggle" onClick={() => setMobileOpen(true)}>
+                <Menu size={22} />
               </button>
-              <div className="avatar-circle small">
-                {currentUser.name.charAt(0).toUpperCase()}
+              <div>
+                <h1>{title}</h1>
+                <p>{subtitle}</p>
               </div>
             </div>
+
+            <div className="header-actions">
+              <button className="icon-btn">
+                <Bell size={20} />
+                <span className="ping"></span>
+              </button>
+              <div className="admin-avatar">{currentName.charAt(0).toUpperCase()}</div>
+              <span className="header-user">{currentName}</span>
+            </div>
           </header>
-          <Outlet />
+
+          <div className="page-content"><Outlet /></div>
         </main>
       </div>
     </>

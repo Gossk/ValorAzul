@@ -1,11 +1,14 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Car, Home, User, FileText, HelpCircle,
   Settings, Users, Bell, Menu, Calculator,
   TrendingUp, DollarSign, BarChart2, Calendar,
-  AlertCircle,
+  AlertCircle, Save, UserCircle, LogOut,
 } from 'lucide-react'
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { db } from '../firebaseConfig'
+import { useAuth } from '../context/AuthContext'
 import './Dashboard.css'
 import './Simulador.css'
 
@@ -47,6 +50,14 @@ const fmt = (n: number) =>
 const n = (s: string) => parseFloat(s) || 0
 
 export default function Simulador() {
+  const navigate = useNavigate()
+  const { perfil, user, logout } = useAuth()
+  const isAdmin  = perfil?.rol === 'Administrador'
+  const isClient = perfil?.rol === 'Cliente'
+
+  const [guardando, setGuardando]         = useState(false)
+  const [guardadoMsg, setGuardadoMsg]     = useState<string>('')
+
   // — Datos del vehículo — (todos string para permitir edición libre)
   const [precioVehiculo,     setPrecioVehiculo]     = useState('40000')
   const [cuotaInicialPorc,   setCuotaInicialPorc]   = useState('0.20')
@@ -83,6 +94,84 @@ export default function Simulador() {
   const [mostrarResultados,  setMostrarResultados]  = useState(false)
   const [activeTab,          setActiveTab]          = useState<'resumen' | 'cronograma'>('resumen')
   const [errorGracia,        setErrorGracia]        = useState('')
+
+  // ── Reabrir una simulación previa (desde "Mis Simulaciones") ──────────────
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('valorazul.reabrirSimulacion')
+      if (!raw) return
+      sessionStorage.removeItem('valorazul.reabrirSimulacion')
+      const e = JSON.parse(raw)
+      if (e.precioVehiculo     !== undefined) setPrecioVehiculo(String(e.precioVehiculo))
+      if (e.cuotaInicialPorc   !== undefined) setCuotaInicialPorc(String(e.cuotaInicialPorc))
+      if (e.tipoMoneda         !== undefined) setTipoMoneda(Number(e.tipoMoneda))
+      if (e.tipoCambio         !== undefined) setTipoCambio(String(e.tipoCambio))
+      if (e.tipoPlazo          !== undefined) setTipoPlazo(Number(e.tipoPlazo))
+      if (e.plazoMeses         !== undefined) setPlazoMeses(String(e.plazoMeses))
+      if (e.plazoAnios         !== undefined) setPlazoAnios(String(e.plazoAnios))
+      if (e.tipoTasa           !== undefined) setTipoTasa(Number(e.tipoTasa))
+      if (e.tasaTEA            !== undefined) setTasaTEA(String(e.tasaTEA))
+      if (e.tasaTNA            !== undefined) setTasaTNA(String(e.tasaTNA))
+      if (e.capitalizacion     !== undefined) setCapitalizacion(Number(e.capitalizacion))
+      if (e.tasaDesgravamen    !== undefined) setTasaDesgravamen(String(e.tasaDesgravamen))
+      if (e.tasaVehicularAnual !== undefined) setTasaVehicularAnual(String(e.tasaVehicularAnual))
+      if (e.tieneGracia        !== undefined) setTieneGracia(!!e.tieneGracia)
+      if (e.mesesGracia        !== undefined) setMesesGracia(String(e.mesesGracia))
+      if (e.tipoGracia         !== undefined) setTipoGracia(Number(e.tipoGracia))
+      if (e.costosNotariales   !== undefined) setCostosNotariales(String(e.costosNotariales))
+      if (e.costosRegistrales  !== undefined) setCostosRegistrales(String(e.costosRegistrales))
+      if (e.tasacion           !== undefined) setTasacion(String(e.tasacion))
+      if (e.otrosGastos        !== undefined) setOtrosGastos(String(e.otrosGastos))
+    } catch (err) {
+      console.warn('[Simulador] No se pudo reabrir la simulación:', err)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Guarda la simulación actual en Firestore para el usuario logueado.
+  const guardarSimulacion = async () => {
+    if (!user?.uid || !resumen) return
+    setGuardando(true)
+    setGuardadoMsg('')
+    try {
+      const entrada = {
+        precioVehiculo, cuotaInicialPorc, tipoMoneda, tipoCambio,
+        tipoPlazo, plazoMeses, plazoAnios,
+        tipoTasa, tasaTEA, tasaTNA, capitalizacion,
+        tasaDesgravamen, tasaVehicularAnual,
+        tieneGracia, mesesGracia, tipoGracia,
+        costosNotariales, costosRegistrales, tasacion, otrosGastos,
+      }
+      await addDoc(collection(db, 'simulaciones'), {
+        uid: user.uid,
+        fecha: new Date().toLocaleDateString('es-PE'),
+        creadoEn: Date.now(),
+        creadoEnServer: serverTimestamp(),
+        precioVehiculo: n(precioVehiculo),
+        moneda: tipoMoneda === 2 ? 'Dólares' : 'Soles',
+        prestamo: resumen.prestamo,
+        cuotaMensual: resumen.cuotaMensual,
+        plazoMeses: resumen.plazoMeses,
+        tcea: resumen.tcea,
+        tea: resumen.tea,
+        totalPagar: resumen.totalPagar,
+        estado: 'Guardada',
+        entrada,
+      })
+      setGuardadoMsg('¡Simulación guardada!')
+    } catch (err: any) {
+      console.error(err)
+      setGuardadoMsg('Error al guardar: ' + (err?.message || ''))
+    } finally {
+      setGuardando(false)
+      setTimeout(() => setGuardadoMsg(''), 3500)
+    }
+  }
+
+  const handleLogout = async () => {
+    try { await logout() } catch {}
+    navigate('/login')
+  }
 
   // ── valores numéricos derivados para cálculos en tiempo real ──────────────
   const _precio    = n(precioVehiculo)
@@ -370,26 +459,47 @@ export default function Simulador() {
 
           <p className="menu-title">PRINCIPAL</p>
           <nav className="menu">
-            <Link to="/dashboard"><Home size={18} /> Dashboard</Link>
-            <Link to="/clientes"><User size={18} /> Clientes</Link>
-            <Link to="/simulador" className="active"><Car size={18} /> Simulador </Link>
-            <Link to="/historial"><FileText size={18} /> Historial</Link>
+            <Link to="/inicio"><Home size={18} /> Inicio</Link>
+
+            {isAdmin && <Link to="/dashboard"><Home size={18} /> Dashboard</Link>}
+            {isAdmin && <Link to="/clientes"><User size={18} /> Clientes</Link>}
+
+            <Link to="/simulador" className="active"><Car size={18} /> Simulador</Link>
+
+            {isClient && <Link to="/mis-simulaciones"><FileText size={18} /> Mis Simulaciones</Link>}
+            {isAdmin  && <Link to="/historial"><FileText size={18} /> Historial</Link>}
+
             <Link to="/ayuda"><HelpCircle size={18} /> Ayuda</Link>
           </nav>
 
           <p className="menu-title config">CONFIGURACIÓN</p>
           <nav className="menu">
-            <Link to="#"><Users size={18} /> Usuarios</Link>
-            <Link to="#"><Settings size={18} /> Configuración</Link>
+            {isAdmin && <Link to="/usuarios"><Users size={18} /> Usuarios</Link>}
+            {isAdmin && <Link to="/configuracion"><Settings size={18} /> Configuración</Link>}
+            <Link to="/perfil"><UserCircle size={18} /> Mi Perfil</Link>
           </nav>
         </div>
 
         <div className="user-box">
-          <div className="avatar">A</div>
-          <div>
-            <strong>Administrador</strong>
-            <p>admin@valorazul.com</p>
+          <div className="avatar">{(perfil?.nombre || 'U').charAt(0).toUpperCase()}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <strong>{perfil?.nombre || 'Invitado'}</strong>
+            <p>{perfil?.email || ''}</p>
+            <p style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>{perfil?.rol || 'Cliente'}</p>
           </div>
+          <button
+            onClick={handleLogout}
+            title="Cerrar sesión"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'rgba(240,244,255,0.7)',
+              cursor: 'pointer',
+              padding: 6,
+            }}
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </aside>
 
@@ -406,8 +516,8 @@ export default function Simulador() {
           </div>
           <div className="header-actions">
             <Bell size={22} />
-            <div className="admin-avatar">A</div>
-            <span>Administrador</span>
+            <div className="admin-avatar">{(perfil?.nombre || 'U').charAt(0).toUpperCase()}</div>
+            <span>{perfil?.nombre || 'Invitado'}</span>
           </div>
         </header>
 
@@ -647,9 +757,35 @@ export default function Simulador() {
           </div>
         </div>
 
-        <button className="sim-btn" onClick={simular}>
-          <Calculator size={18} /> Simular Financiamiento
-        </button>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button className="sim-btn" onClick={simular}>
+            <Calculator size={18} /> Simular Financiamiento
+          </button>
+
+          {mostrarResultados && resumen && (
+            <button
+              className="sim-btn"
+              onClick={guardarSimulacion}
+              disabled={guardando}
+              style={{
+                background: 'linear-gradient(135deg,#10b981,#22c55e)',
+                opacity: guardando ? 0.7 : 1,
+              }}
+              title="Guardar esta simulación en tu historial"
+            >
+              <Save size={18} /> {guardando ? 'Guardando…' : 'Guardar simulación'}
+            </button>
+          )}
+
+          {guardadoMsg && (
+            <span style={{
+              fontSize: 13,
+              color: guardadoMsg.startsWith('Error') ? '#fca5a5' : '#86efac',
+            }}>
+              {guardadoMsg}
+            </span>
+          )}
+        </div>
 
         {/* ── RESULTADOS ── */}
         {mostrarResultados && resumen && (<>

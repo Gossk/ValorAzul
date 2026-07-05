@@ -4,7 +4,7 @@ import {
   Car, Home, User, FileText, HelpCircle,
   Settings, Users, Bell, Menu, Calculator,
   TrendingUp, DollarSign, BarChart2, Calendar,
-  AlertCircle,
+  AlertCircle, Search,
 } from 'lucide-react'
 import './Dashboard.css'
 import './Simulador.css'
@@ -39,50 +39,143 @@ interface Resumen {
   plazoMeses: number
   mesesGracia: number
   mesesAmortizacion: number
+  // — Detalle de lo que escogió el cliente —
+  vehiculoNombre: string
+  precioVehiculo: number
+  monedaOriginal: string
+  cuotaInicialPorc: number
+  cuotaInicialMonto: number
+  tipoGraciaLabel: string
 }
+
+interface Vehiculo {
+  nombre: string
+  precio: number
+}
+
+// — Catálogo local de vehículos (referencial) para el autocompletado —
+const VEHICULOS: Vehiculo[] = [
+  { nombre: 'Toyota Yaris',            precio: 65000  },
+  { nombre: 'Toyota Corolla',          precio: 89000  },
+  { nombre: 'Toyota RAV4',             precio: 145000 },
+  { nombre: 'Toyota Hilux',            precio: 130000 },
+  { nombre: 'Hyundai Accent',          precio: 62000  },
+  { nombre: 'Hyundai Tucson',          precio: 118000 },
+  { nombre: 'Hyundai Elantra',         precio: 78000  },
+  { nombre: 'Kia Rio',                 precio: 58000  },
+  { nombre: 'Kia Sportage',            precio: 112000 },
+  { nombre: 'Kia Sorento',             precio: 145000 },
+  { nombre: 'Nissan Versa',            precio: 60000  },
+  { nombre: 'Nissan Sentra',           precio: 82000  },
+  { nombre: 'Nissan X-Trail',          precio: 120000 },
+  { nombre: 'Nissan Frontier',         precio: 135000 },
+  { nombre: 'Chevrolet Sail',          precio: 48000  },
+  { nombre: 'Chevrolet Onix',          precio: 55000  },
+  { nombre: 'Chevrolet Tracker',       precio: 95000  },
+  { nombre: 'Volkswagen Gol',          precio: 52000  },
+  { nombre: 'Volkswagen Vento',        precio: 75000  },
+  { nombre: 'Volkswagen Tiguan',       precio: 130000 },
+  { nombre: 'Suzuki Swift',            precio: 54000  },
+  { nombre: 'Suzuki Vitara',           precio: 90000  },
+  { nombre: 'Honda CR-V',              precio: 140000 },
+  { nombre: 'Honda City',              precio: 80000  },
+  { nombre: 'Mitsubishi Outlander',    precio: 125000 },
+  { nombre: 'Kia Picanto',             precio: 40000  },
+  { nombre: 'Suzuki Alto',             precio: 25000  },
+]
 
 const fmt = (n: number) =>
   n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-const n = (s: string) => parseFloat(s) || 0
+const n = (s: string) => {
+  const v = parseFloat(s)
+  return Number.isFinite(v) ? v : 0
+}
+
+// — Sanitizadores de input —
+// Solo dígitos y un único punto decimal, con tope de caracteres.
+const soloNumeros = (value: string, maxLen = 12): string => {
+  let limpio = value.replace(/[^0-9.]/g, '')
+  const partes = limpio.split('.')
+  if (partes.length > 2) {
+    limpio = partes[0] + '.' + partes.slice(1).join('')
+  }
+  return limpio.slice(0, maxLen)
+}
+
+// Solo dígitos enteros (para plazos y meses de gracia).
+const soloEnteros = (value: string, maxLen = 3): string =>
+  value.replace(/[^0-9]/g, '').slice(0, maxLen)
+
+// Solo letras, números de modelo y espacios para el buscador (permite "RAV4", "X-Trail").
+const soloTextoVehiculo = (value: string): string =>
+  value.replace(/[^a-zA-Z0-9À-ÿñÑ\s-]/g, '').slice(0, 40)
 
 export default function Simulador() {
-  // — Datos del vehículo — (todos string para permitir edición libre)
-  const [precioVehiculo,     setPrecioVehiculo]     = useState('40000')
-  const [cuotaInicialPorc,   setCuotaInicialPorc]   = useState('0.20')
+  // — Buscador de vehículo (lupa + autocompletado) —
+  const [busquedaVehiculo,    setBusquedaVehiculo]    = useState('')
+  const [mostrarSugerencias,  setMostrarSugerencias]  = useState(false)
+  const [vehiculoSeleccionado, setVehiculoSeleccionado] = useState<Vehiculo | null>(null)
+
+  // — Datos del vehículo — (el precio se fija solo al seleccionar del buscador)
+  const [precioVehiculo,     setPrecioVehiculo]     = useState('')
+  const [cuotaInicialPorc,   setCuotaInicialPorc]   = useState('')
   const [tipoMoneda,         setTipoMoneda]         = useState(1)
-  const [tipoCambio,         setTipoCambio]         = useState('3.5')
+  const [tipoCambio,         setTipoCambio]         = useState('')
   const [tipoPlazo,          setTipoPlazo]          = useState(1)
-  const [plazoMeses,         setPlazoMeses]         = useState('24')
-  const [plazoAnios,         setPlazoAnios]         = useState('2')
+  const [plazoMeses,         setPlazoMeses]         = useState('')
+  const [plazoAnios,         setPlazoAnios]         = useState('')
 
   // — Tipo de tasa —
   const [tipoTasa,           setTipoTasa]           = useState(1)
-  const [tasaTEA,            setTasaTEA]            = useState('0.11')
-  const [tasaTNA,            setTasaTNA]            = useState('0.10')
+  const [tasaTEA,            setTasaTEA]            = useState('')
+  const [tasaTNA,            setTasaTNA]            = useState('')
   const [capitalizacion,     setCapitalizacion]     = useState(12)
 
   // — Seguros —
-  const [tasaDesgravamen,    setTasaDesgravamen]    = useState('0.0035')
-  const [tasaVehicularAnual, setTasaVehicularAnual] = useState('0.036')
+  const [tasaDesgravamen,    setTasaDesgravamen]    = useState('')
+  const [tasaVehicularAnual, setTasaVehicularAnual] = useState('')
 
   // — Período de gracia —
   const [tieneGracia,        setTieneGracia]        = useState(false)
-  const [mesesGracia,        setMesesGracia]        = useState('0')
+  const [mesesGracia,        setMesesGracia]        = useState('')
   const [tipoGracia,         setTipoGracia]         = useState(1)
 
-  // — Costos iniciales —
-  const [costosNotariales,   setCostosNotariales]   = useState('120')
-  const [costosRegistrales,  setCostosRegistrales]  = useState('180')
-  const [tasacion,           setTasacion]           = useState('80')
-  const [otrosGastos,        setOtrosGastos]        = useState('100')
+  // — Costos iniciales — (opcionales: vacío = S/ 0.00)
+  const [costosNotariales,   setCostosNotariales]   = useState('')
+  const [costosRegistrales,  setCostosRegistrales]  = useState('')
+  const [tasacion,           setTasacion]           = useState('')
+  const [otrosGastos,        setOtrosGastos]        = useState('')
 
   // — Resultados —
   const [cronograma,         setCronograma]         = useState<CronogramaItem[]>([])
   const [resumen,            setResumen]            = useState<Resumen | null>(null)
   const [mostrarResultados,  setMostrarResultados]  = useState(false)
   const [activeTab,          setActiveTab]          = useState<'resumen' | 'cronograma'>('resumen')
-  const [errorGracia,        setErrorGracia]        = useState('')
+  const [error,              setError]              = useState('')
+
+  // ── buscador de vehículo ────────────────────────────────────────────────
+  const sugerencias = busquedaVehiculo.trim().length > 0
+    ? VEHICULOS.filter(v =>
+        v.nombre.toLowerCase().includes(busquedaVehiculo.trim().toLowerCase())
+      ).slice(0, 6)
+    : []
+
+  const handleBusquedaChange = (value: string) => {
+    setBusquedaVehiculo(soloTextoVehiculo(value))
+    setMostrarSugerencias(true)
+    // Si el usuario edita el texto de búsqueda, el precio fijado ya no aplica
+    setVehiculoSeleccionado(null)
+    setPrecioVehiculo('')
+  }
+
+  const seleccionarVehiculo = (v: Vehiculo) => {
+    setBusquedaVehiculo(v.nombre)
+    setPrecioVehiculo(v.precio.toString())
+    setVehiculoSeleccionado(v)
+    setMostrarSugerencias(false)
+    setError('')
+  }
 
   // ── valores numéricos derivados para cálculos en tiempo real ──────────────
   const _precio    = n(precioVehiculo)
@@ -112,111 +205,123 @@ export default function Simulador() {
     }
   }
 
+  // ── VALIDACIÓN CENTRALIZADA ───────────────────────────────────────────────
+  // Devuelve el primer mensaje de error encontrado, o '' si todo es válido.
+  const validar = (): string => {
+    const precioNum       = n(precioVehiculo)
+    const cuotaInicialNum = n(cuotaInicialPorc)
+    const tipoCambioNum   = n(tipoCambio)
+    const plazoMesesNum   = n(plazoMeses)
+    const plazoAniosNum   = n(plazoAnios)
+    const mesesGraciaNum  = n(mesesGracia)
+
+    // — Campos obligatorios —
+    if (precioVehiculo.trim() === '')
+      return 'Selecciona un vehículo con el buscador para fijar el precio.'
+    if (tipoMoneda === 2 && tipoCambio.trim() === '')
+      return 'Ingresa el tipo de cambio para convertir de dólares a soles.'
+    if (cuotaInicialPorc.trim() === '')
+      return 'Ingresa la cuota inicial en decimal (ej: 0.20 para 20%).'
+    if (tipoPlazo === 1 && plazoMeses.trim() === '')
+      return 'Ingresa el plazo en meses.'
+    if (tipoPlazo === 2 && plazoAnios.trim() === '')
+      return 'Ingresa el plazo en años.'
+    if (tipoTasa === 1 && tasaTEA.trim() === '')
+      return 'Ingresa la TEA en decimal (ej: 0.11 para 11%).'
+    if (tipoTasa === 2 && tasaTNA.trim() === '')
+      return 'Ingresa la TNA en decimal (ej: 0.10 para 10%).'
+    if (tasaDesgravamen.trim() === '')
+      return 'Ingresa la tasa mensual del seguro de desgravamen (ej: 0.0035).'
+    if (tasaVehicularAnual.trim() === '')
+      return 'Ingresa la tasa anual del seguro vehicular (ej: 0.036).'
+    if (tieneGracia && mesesGracia.trim() === '')
+      return 'Ingresa la cantidad de meses de gracia.'
+
+    // — Rangos del vehículo —
+    const precioFinal = tipoMoneda === 2 ? precioNum * tipoCambioNum : precioNum
+    if (precioNum <= 0)
+      return 'El precio del vehículo debe ser mayor a 0.'
+    if (tipoMoneda === 2 && (tipoCambioNum < 3.0 || tipoCambioNum > 5.0))
+      return 'El tipo de cambio debe estar entre 3.00 y 5.00.'
+    if (precioFinal < 5000)
+      return 'El precio del vehículo debe ser al menos S/ 5,000.'
+    if (precioFinal > 500000)
+      return 'El precio del vehículo no puede superar S/ 500,000.'
+
+    // — Cuota inicial —
+    if (cuotaInicialNum < 0.10)
+      return 'La cuota inicial mínima es el 10% del precio (ingresa 0.10 o más).'
+    if (cuotaInicialNum >= 1)
+      return 'La cuota inicial no puede ser igual o mayor al 100%.'
+
+    // — Plazo —
+    const plazoFinal = tipoPlazo === 1 ? plazoMesesNum : plazoAniosNum * 12
+    if (!Number.isInteger(plazoFinal) || plazoFinal < 6)
+      return 'El plazo mínimo es 6 meses.'
+    if (plazoFinal > 84)
+      return 'El plazo máximo es 84 meses (7 años).'
+
+    // — Tasas —
+    const tasaEfectivaAnual = tipoTasa === 1
+      ? n(tasaTEA)
+      : Math.pow(1 + n(tasaTNA) / capitalizacion, capitalizacion) - 1
+    if (tasaEfectivaAnual < 0.01)
+      return 'La tasa efectiva anual no puede ser menor al 1% (ingresa 0.01 o más).'
+    if (tasaEfectivaAnual > 0.80)
+      return 'La tasa efectiva anual no puede superar el 80%.'
+
+    // — Seguros —
+    const tasaDesgNum = n(tasaDesgravamen)
+    const tasaVehNum  = n(tasaVehicularAnual)
+    if (tasaDesgNum < 0.0001 || tasaDesgNum > 0.01)
+      return 'El seguro de desgravamen mensual debe estar entre 0.01% y 1.00% (0.0001 – 0.01).'
+    if (tasaVehNum < 0.01 || tasaVehNum > 0.08)
+      return 'El seguro vehicular anual debe estar entre 1% y 8% (0.01 – 0.08).'
+
+    // — Costos iniciales —
+    const costos = [n(costosNotariales), n(costosRegistrales), n(tasacion), n(otrosGastos)]
+    if (costos.some(c => c > 5000))
+      return 'Ningún costo inicial puede superar S/ 5,000.'
+
+    // — Período de gracia —
+    if (tieneGracia) {
+      if (mesesGraciaNum < 1)
+        return 'Los meses de gracia deben ser al menos 1.'
+      if (mesesGraciaNum > 6)
+        return 'Los meses de gracia no pueden superar 6 meses.'
+      if (mesesGraciaNum >= plazoFinal)
+        return 'Los meses de gracia deben ser menores que el plazo total.'
+    }
+
+    return ''
+  }
+
   // ── SIMULACIÓN PRINCIPAL ───────────────────────────────────────────────────
   const simular = () => {
-    setErrorGracia('')
+    const msgError = validar()
+    if (msgError) {
+      setError(msgError)
+      setMostrarResultados(false)
+      return
+    }
+    setError('')
 
-    // convertir strings a números para validar y calcular
-    const precioNum        = n(precioVehiculo)
-    const cuotaInicialNum  = n(cuotaInicialPorc)
-    const tipoCambioNum    = n(tipoCambio)
-    const plazoMesesNum    = n(plazoMeses)
-    const plazoAniosNum    = n(plazoAnios)
-    const tasaTEANum       = n(tasaTEA)
-    const tasaTNANum       = n(tasaTNA)
-    const tasaDesgNum      = n(tasaDesgravamen)
-    const tasaVehNum       = n(tasaVehicularAnual)
-    const notarialesNum    = n(costosNotariales)
-    const registralesNum   = n(costosRegistrales)
-    const tasacionNum      = n(tasacion)
-    const otrosNum         = n(otrosGastos)
-    const mesesGraciaNum   = n(mesesGracia)
-
-    // ── VALIDACIONES ──────────────────────────────────────────────────────────
-    const precioFinal = tipoMoneda === 2 ? precioNum * tipoCambioNum : precioNum
-    if (precioNum <= 0) {
-      setErrorGracia('El precio del vehículo debe ser mayor a 0.')
-      return
-    }
-    if (precioFinal < 5000) {
-      setErrorGracia('El precio del vehículo debe ser al menos S/ 5,000.')
-      return
-    }
-    if (precioFinal > 500000) {
-      setErrorGracia('El precio del vehículo no puede superar S/ 500,000.')
-      return
-    }
-    if (tipoMoneda === 2 && (tipoCambioNum < 3.0 || tipoCambioNum > 5.0)) {
-      setErrorGracia('El tipo de cambio debe estar entre 3.00 y 5.00.')
-      return
-    }
-    if (cuotaInicialNum < 0.10) {
-      setErrorGracia('La cuota inicial mínima es el 10% del precio del vehículo.')
-      return
-    }
-    if (cuotaInicialNum >= 1) {
-      setErrorGracia('La cuota inicial no puede ser igual o mayor al 100%.')
-      return
-    }
-    const plazoFinal = tipoPlazo === 1 ? plazoMesesNum : plazoAniosNum * 12
-    if (plazoFinal < 6) {
-      setErrorGracia('El plazo mínimo es 6 meses.')
-      return
-    }
-    if (plazoFinal > 84) {
-      setErrorGracia('El plazo máximo es 84 meses (7 años).')
-      return
-    }
-    const tasaEfectivaAnual = tipoTasa === 1
-      ? tasaTEANum
-      : Math.pow(1 + tasaTNANum / capitalizacion, capitalizacion) - 1
-    if (tasaEfectivaAnual < 0.01) {
-      setErrorGracia('La tasa efectiva anual no puede ser menor al 1%.')
-      return
-    }
-    if (tasaEfectivaAnual > 0.80) {
-      setErrorGracia('La tasa efectiva anual no puede superar el 80%.')
-      return
-    }
-    if (tasaDesgNum < 0.0001 || tasaDesgNum > 0.01) {
-      setErrorGracia('El seguro de desgravamen mensual debe estar entre 0.01% y 1.00%.')
-      return
-    }
-    if (tasaVehNum < 0.01 || tasaVehNum > 0.08) {
-      setErrorGracia('El seguro vehicular anual debe estar entre 1% y 8%.')
-      return
-    }
-    if (notarialesNum < 0 || registralesNum < 0 || tasacionNum < 0 || otrosNum < 0) {
-      setErrorGracia('Los costos iniciales no pueden ser negativos.')
-      return
-    }
-    if (notarialesNum > 5000 || registralesNum > 5000 || tasacionNum > 5000 || otrosNum > 5000) {
-      setErrorGracia('Ningún costo inicial puede superar S/ 5,000.')
-      return
-    }
-    if (tieneGracia) {
-      if (mesesGraciaNum < 1) {
-        setErrorGracia('Los meses de gracia deben ser al menos 1.')
-        return
-      }
-      if (mesesGraciaNum > 6) {
-        setErrorGracia('Los meses de gracia no pueden superar 6 meses.')
-        return
-      }
-      if (mesesGraciaNum >= plazoFinal) {
-        setErrorGracia('Los meses de gracia deben ser menores que el plazo total.')
-        return
-      }
-    }
-    // ── FIN VALIDACIONES ──────────────────────────────────────────────────────
+    const precioNum       = n(precioVehiculo)
+    const cuotaInicialNum = n(cuotaInicialPorc)
+    const tipoCambioNum   = n(tipoCambio)
+    const tasaDesgNum     = n(tasaDesgravamen)
+    const tasaVehNum      = n(tasaVehicularAnual)
+    const mesesGraciaNum  = n(mesesGracia)
+    const plazoFinal      = tipoPlazo === 1 ? n(plazoMeses) : n(plazoAnios) * 12
 
     const precio = tipoMoneda === 2 ? precioNum * tipoCambioNum : precioNum
-    const { tea, tem: TEM } = calcularTEM(tasaTEANum, tasaTNANum)
-    const prestamoInicial = precio - precio * cuotaInicialNum
+    const { tea, tem: TEM } = calcularTEM(n(tasaTEA), n(tasaTNA))
+    const cuotaInicialMonto = precio * cuotaInicialNum
+    const prestamoInicial = precio - cuotaInicialMonto
     let saldo = prestamoInicial
 
     const segVehMensual = (precio * tasaVehNum) / 12
-    const totalCostosIniciales = notarialesNum + registralesNum + tasacionNum + otrosNum
+    const totalCostosIniciales = n(costosNotariales) + n(costosRegistrales) + n(tasacion) + n(otrosGastos)
     const gracia = tieneGracia ? mesesGraciaNum : 0
     const mesesAmortiza = plazoFinal - gracia
 
@@ -227,57 +332,64 @@ export default function Simulador() {
     const nuevoCron: CronogramaItem[] = []
     const cuotasPorMes: number[] = []
 
-    let totInt = 0, totAmort = 0, totDesg = 0, totPagado = 0
+    let totInt = 0, totAmort = 0, totDesg = 0, totSegVeh = 0, totPagado = 0
 
     for (let mes = 1; mes <= plazoFinal; mes++) {
-      let intMes: number, desgMes: number, amort: number, cuotaTotal: number
+      let intMes: number, desgMes: number, amort: number, cuotaTotal: number, segVehMes: number
       let tipo: CronogramaItem['tipo'] = 'normal'
 
       if (mes <= gracia) {
         intMes = saldo * TEM
         if (tipoGracia === 1) {
+          // Gracia total: no paga nada, los intereses se capitalizan
           tipo       = 'gracia_total'
           desgMes    = 0
+          segVehMes  = 0
           amort      = 0
           saldo      = saldo + intMes
           cuotaTotal = 0
         } else {
+          // Gracia parcial: paga solo intereses y seguros (sin amortizar)
           tipo       = 'gracia_parcial'
           desgMes    = saldo * tasaDesgNum
+          segVehMes  = segVehMensual
           amort      = 0
-          cuotaTotal = intMes + segVehMensual + desgMes
+          cuotaTotal = intMes + segVehMes + desgMes
         }
       } else {
+        // Con gracia total, la cuota se recalcula sobre el saldo capitalizado
         if (mes === gracia + 1 && gracia > 0 && tipoGracia === 1) {
           cuotaBase = saldo * (TEM * Math.pow(1 + TEM, mesesAmortiza)) / (Math.pow(1 + TEM, mesesAmortiza) - 1)
         }
-        intMes  = saldo * TEM
-        desgMes = saldo * tasaDesgNum
-        amort   = cuotaBase - intMes
-        saldo   = saldo - amort
+        intMes    = saldo * TEM
+        desgMes   = saldo * tasaDesgNum
+        segVehMes = segVehMensual
+        amort     = cuotaBase - intMes
+        saldo     = saldo - amort
         if (saldo < 0.01) saldo = 0
-        cuotaTotal = cuotaBase + segVehMensual + desgMes
+        cuotaTotal = cuotaBase + segVehMes + desgMes
       }
 
       cuotasPorMes.push(cuotaTotal)
       totInt    += intMes
       totAmort  += amort
       totDesg   += desgMes
+      totSegVeh += segVehMes
       totPagado += cuotaTotal
 
       nuevoCron.push({
         mes, tipo,
-        cuotaBase:         tipo === 'gracia_total' ? 0 : +cuotaBase.toFixed(2),
+        // Durante la gracia (total o parcial) no se paga cuota base
+        cuotaBase:         tipo === 'normal' ? +cuotaBase.toFixed(2) : 0,
         cuotaTotal:        +cuotaTotal.toFixed(2),
         interes:           +intMes.toFixed(2),
         amortizacion:      +amort.toFixed(2),
         seguroDesgravamen: +desgMes.toFixed(2),
-        seguroVehicular:   tipo === 'gracia_total' ? 0 : +segVehMensual.toFixed(2),
+        seguroVehicular:   +segVehMes.toFixed(2),
         saldo:             +saldo.toFixed(2),
       })
     }
 
-    const totalSegVeh = segVehMensual * plazoFinal
     const flujo0 = prestamoInicial - totalCostosIniciales
 
     const vanAt = (tasa: number): number => {
@@ -290,8 +402,8 @@ export default function Simulador() {
 
     const van = vanAt(TEM)
 
-    // ── TIR: Newton-Raphson (igual que Excel) ─────────────────────────────────
-    let tirMensual = TEM
+    // ── TIR: Newton-Raphson con protecciones numéricas ────────────────────────
+    let tirMensual = TEM > 0 ? TEM : 0.01
     for (let iter = 0; iter < 1000; iter++) {
       let f = flujo0, df = 0
       for (let i = 0; i < plazoFinal; i++) {
@@ -299,22 +411,27 @@ export default function Simulador() {
         f  += (-cuotasPorMes[i]) / Math.pow(1 + tirMensual, t)
         df += (t * cuotasPorMes[i]) / Math.pow(1 + tirMensual, t + 1)
       }
+      if (Math.abs(df) < 1e-12) break            // evita división entre ~0
       const delta = f / df
       tirMensual -= delta
+      if (!Number.isFinite(tirMensual) || tirMensual <= -0.999) {
+        tirMensual = TEM                          // si diverge, usa la TEM como referencia
+        break
+      }
       if (Math.abs(delta) < 1e-15) break
     }
 
     const tcea = Math.pow(1 + tirMensual, 12) - 1
 
-    const primerMesNormal = nuevoCron.find(c => c.tipo === 'normal')!
-    const cuotaMensualBase = primerMesNormal.cuotaBase
+    const primerMesNormal = nuevoCron.find(c => c.tipo === 'normal')
+    const cuotaMensualBase = primerMesNormal ? primerMesNormal.cuotaBase : +cuotaBase.toFixed(2)
 
     setResumen({
       totalInteres:           +totInt.toFixed(2),
       totalAmortizacion:      +totAmort.toFixed(2),
       totalCuotasBase:        +(cuotaBase * mesesAmortiza).toFixed(2),
       totalSeguroDesgravamen: +totDesg.toFixed(2),
-      totalSeguroVehicular:   +totalSegVeh.toFixed(2),
+      totalSeguroVehicular:   +totSegVeh.toFixed(2),
       totalCostos:            +totalCostosIniciales.toFixed(2),
       totalPagar:             +(totPagado + totalCostosIniciales).toFixed(2),
       van:                    +van.toFixed(2),
@@ -322,11 +439,21 @@ export default function Simulador() {
       tcea:                   tcea * 100,
       tea:                    +(tea * 100).toFixed(4),
       tem:                    +(TEM * 100).toFixed(6),
-      cuotaMensual:           +cuotaMensualBase.toFixed(2),
+      cuotaMensual:           cuotaMensualBase,
       prestamo:               +prestamoInicial.toFixed(2),
       plazoMeses:             plazoFinal,
       mesesGracia:            gracia,
       mesesAmortizacion:      mesesAmortiza,
+      vehiculoNombre:         vehiculoSeleccionado
+                                ? vehiculoSeleccionado.nombre
+                                : 'Vehículo no especificado',
+      precioVehiculo:         +precio.toFixed(2),
+      monedaOriginal:         tipoMoneda === 1 ? 'Soles (S/)' : `Dólares ($) — T.C. ${fmt(tipoCambioNum)}`,
+      cuotaInicialPorc:       cuotaInicialNum * 100,
+      cuotaInicialMonto:      +cuotaInicialMonto.toFixed(2),
+      tipoGraciaLabel:        gracia === 0
+                                ? 'Sin período de gracia'
+                                : tipoGracia === 1 ? 'Gracia total' : 'Gracia parcial',
     })
 
     setCronograma(nuevoCron)
@@ -334,9 +461,14 @@ export default function Simulador() {
     setActiveTab('resumen')
   }
 
-  const capMap: Record<number, string> = {
-    360: 'Diaria (360 días)', 12: 'Mensual', 4: 'Trimestral', 2: 'Semestral', 1: 'Anual',
-  }
+  // Orden explícito de mayor a menor frecuencia de capitalización
+  const capOpciones: [number, string][] = [
+    [360, 'Diaria (360 días)'],
+    [12,  'Mensual'],
+    [4,   'Trimestral'],
+    [2,   'Semestral'],
+    [1,   'Anual'],
+  ]
 
   // TEA equivalente en tiempo real para TNA
   const teaEquivDisplay = _tna > 0
@@ -426,32 +558,122 @@ export default function Simulador() {
               <h3>Datos del Vehículo</h3>
             </div>
 
-            <Field label="Precio del vehículo">
-              <div className="sim-ig">
+            <Field label="Buscar vehículo">
+              <div style={{ position: 'relative' }}>
+                <div className="sim-ig" style={{ alignItems: 'center' }}>
+                  <Search size={16} style={{ color: '#94a3b8', marginRight: 6, flexShrink: 0 }} />
+                  <input
+                    type="text"
+                    placeholder="Ej: Toyota Yaris"
+                    value={busquedaVehiculo}
+                    onChange={e => handleBusquedaChange(e.target.value)}
+                    onFocus={() => setMostrarSugerencias(true)}
+                    onBlur={() => setTimeout(() => setMostrarSugerencias(false), 150)}
+                  />
+                </div>
+
+                {mostrarSugerencias && sugerencias.length > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 4px)',
+                      left: 0,
+                      right: 0,
+                      zIndex: 20,
+                      background: '#1e1b3a',
+                      border: '1px solid #3f3a6b',
+                      borderRadius: 8,
+                      maxHeight: 230,
+                      overflowY: 'auto',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                    }}
+                  >
+                    {sugerencias.map(v => (
+                      <div
+                        key={v.nombre}
+                        onMouseDown={() => seleccionarVehiculo(v)}
+                        style={{
+                          padding: '9px 12px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          fontSize: 13,
+                          color: '#e2e8f0',
+                          borderBottom: '1px solid #2d2a52',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#2d2a52')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <span>{v.nombre}</span>
+                        <span style={{ color: '#818cf8', fontWeight: 600 }}>S/ {fmt(v.precio)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {mostrarSugerencias && busquedaVehiculo.trim().length > 0 && sugerencias.length === 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 4px)',
+                      left: 0,
+                      right: 0,
+                      zIndex: 20,
+                      background: '#1e1b3a',
+                      border: '1px solid #3f3a6b',
+                      borderRadius: 8,
+                      padding: '9px 12px',
+                      fontSize: 13,
+                      color: '#94a3b8',
+                    }}
+                  >
+                    Sin resultados. Prueba con otra marca o modelo.
+                  </div>
+                )}
+              </div>
+
+              {vehiculoSeleccionado && (
+                <div style={{
+                  marginTop: 6, fontSize: 12, color: '#818cf8',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                  <Car size={13} /> Seleccionado: <strong>{vehiculoSeleccionado.nombre}</strong>
+                </div>
+              )}
+            </Field>
+
+            {/* Precio: se fija automáticamente al elegir el vehículo, no es editable */}
+            <Field label="Precio del vehículo (según selección)">
+              <div className="sim-ig" style={{ opacity: vehiculoSeleccionado ? 1 : 0.55 }}>
                 <span className="sim-pre">{tipoMoneda === 1 ? 'S/' : '$'}</span>
                 <input
-                  type="number"
-                  value={precioVehiculo}
-                  onChange={e => setPrecioVehiculo(e.target.value)}
+                  type="text"
+                  value={vehiculoSeleccionado ? fmt(_precio) : ''}
+                  placeholder="Selecciona un vehículo arriba"
+                  disabled
+                  readOnly
+                  style={{ cursor: 'not-allowed' }}
                 />
               </div>
             </Field>
 
             <Field label="Moneda">
               <select className="sim-sel" value={tipoMoneda}
-                onChange={e => setTipoMoneda(+e.target.value)}>
+                onChange={e => { setTipoMoneda(+e.target.value); setError('') }}>
                 <option value={1}>Soles (S/)</option>
                 <option value={2}>Dólares ($)</option>
               </select>
             </Field>
 
             {tipoMoneda === 2 && (
-              <Field label="Tipo de cambio">
+              <Field label="Tipo de cambio (3.00 – 5.00)">
                 <div className="sim-ig">
                   <input
-                    type="number" step="0.01"
+                    type="text" inputMode="decimal"
+                    placeholder="Ej: 3.50"
                     value={tipoCambio}
-                    onChange={e => setTipoCambio(e.target.value)}
+                    onChange={e => { setTipoCambio(soloNumeros(e.target.value, 6)); setError('') }}
                   />
                   <span className="sim-suf">
                     = S/ {_precio > 0 && _cambio > 0 ? fmt(_precio * _cambio) : '0.00'}
@@ -460,12 +682,13 @@ export default function Simulador() {
               </Field>
             )}
 
-            <Field label="Cuota inicial (decimal)">
+            <Field label="Cuota inicial en decimal (mín. 0.10)">
               <div className="sim-ig">
                 <input
-                  type="number" step="0.01"
+                  type="text" inputMode="decimal"
+                  placeholder="Ej: 0.20 = 20%"
                   value={cuotaInicialPorc}
-                  onChange={e => setCuotaInicialPorc(e.target.value)}
+                  onChange={e => { setCuotaInicialPorc(soloNumeros(e.target.value, 6)); setError('') }}
                 />
                 <span className="sim-suf">
                   = S/ {precioFinalDisplay > 0 && _cuotaPorc > 0 ? fmt(precioFinalDisplay * _cuotaPorc) : '0.00'}
@@ -473,19 +696,22 @@ export default function Simulador() {
               </div>
             </Field>
 
-            <Field label="Plazo">
+            <Field label="Plazo (6 – 84 meses)">
               <div style={{ display: 'flex', gap: 8 }}>
                 <select className="sim-sel" style={{ flex: 1 }} value={tipoPlazo}
-                  onChange={e => setTipoPlazo(+e.target.value)}>
+                  onChange={e => { setTipoPlazo(+e.target.value); setError('') }}>
                   <option value={1}>Meses</option>
                   <option value={2}>Años</option>
                 </select>
                 <input
-                  className="sim-solo" style={{ flex: 1 }} type="number"
+                  className="sim-solo" style={{ flex: 1 }} type="text" inputMode="numeric"
+                  placeholder={tipoPlazo === 1 ? 'Ej: 24' : 'Ej: 2'}
                   value={tipoPlazo === 1 ? plazoMeses : plazoAnios}
-                  onChange={e => tipoPlazo === 1
-                    ? setPlazoMeses(e.target.value)
-                    : setPlazoAnios(e.target.value)}
+                  onChange={e => {
+                    const v = soloEnteros(e.target.value, tipoPlazo === 1 ? 2 : 1)
+                    tipoPlazo === 1 ? setPlazoMeses(v) : setPlazoAnios(v)
+                    setError('')
+                  }}
                 />
               </div>
             </Field>
@@ -500,19 +726,20 @@ export default function Simulador() {
 
             <Field label="Tipo de tasa">
               <select className="sim-sel" value={tipoTasa}
-                onChange={e => setTipoTasa(+e.target.value)}>
+                onChange={e => { setTipoTasa(+e.target.value); setError('') }}>
                 <option value={1}>TEA — Tasa Efectiva Anual</option>
                 <option value={2}>TNA — Tasa Nominal Anual</option>
               </select>
             </Field>
 
             {tipoTasa === 1 ? (
-              <Field label="TEA (ej: 0.11 = 11%)">
+              <Field label="TEA en decimal (0.01 – 0.80)">
                 <div className="sim-ig">
                   <input
-                    type="number" step="0.001"
+                    type="text" inputMode="decimal"
+                    placeholder="Ej: 0.11 = 11%"
                     value={tasaTEA}
-                    onChange={e => setTasaTEA(e.target.value)}
+                    onChange={e => { setTasaTEA(soloNumeros(e.target.value, 8)); setError('') }}
                   />
                   <span className="sim-suf">
                     {_tea > 0 ? (_tea * 100).toFixed(1) : '0.0'}%
@@ -521,12 +748,13 @@ export default function Simulador() {
               </Field>
             ) : (
               <>
-                <Field label="TNA (ej: 0.10 = 10%)">
+                <Field label="TNA en decimal">
                   <div className="sim-ig">
                     <input
-                      type="number" step="0.001"
+                      type="text" inputMode="decimal"
+                      placeholder="Ej: 0.10 = 10%"
                       value={tasaTNA}
-                      onChange={e => setTasaTNA(e.target.value)}
+                      onChange={e => { setTasaTNA(soloNumeros(e.target.value, 8)); setError('') }}
                     />
                     <span className="sim-suf">
                       {_tna > 0 ? (_tna * 100).toFixed(1) : '0.0'}%
@@ -536,7 +764,7 @@ export default function Simulador() {
                 <Field label="Capitalización">
                   <select className="sim-sel" value={capitalizacion}
                     onChange={e => setCapitalizacion(+e.target.value)}>
-                    {Object.entries(capMap).map(([k, v]) => (
+                    {capOpciones.map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>
                     ))}
                   </select>
@@ -548,12 +776,13 @@ export default function Simulador() {
               </>
             )}
 
-            <Field label="Seg. Desgravamen mensual">
+            <Field label="Seg. Desgravamen mensual (0.0001 – 0.01)">
               <div className="sim-ig">
                 <input
-                  type="number" step="0.0001"
+                  type="text" inputMode="decimal"
+                  placeholder="Ej: 0.0035 = 0.35%"
                   value={tasaDesgravamen}
-                  onChange={e => setTasaDesgravamen(e.target.value)}
+                  onChange={e => { setTasaDesgravamen(soloNumeros(e.target.value, 8)); setError('') }}
                 />
                 <span className="sim-suf">
                   {_desg > 0 ? (_desg * 100).toFixed(2) : '0.00'}%
@@ -561,12 +790,13 @@ export default function Simulador() {
               </div>
             </Field>
 
-            <Field label="Seg. Vehicular anual">
+            <Field label="Seg. Vehicular anual (0.01 – 0.08)">
               <div className="sim-ig">
                 <input
-                  type="number" step="0.001"
+                  type="text" inputMode="decimal"
+                  placeholder="Ej: 0.036 = 3.6%"
                   value={tasaVehicularAnual}
-                  onChange={e => setTasaVehicularAnual(e.target.value)}
+                  onChange={e => { setTasaVehicularAnual(soloNumeros(e.target.value, 8)); setError('') }}
                 />
                 <span className="sim-suf">
                   {_veh > 0 ? (_veh * 100).toFixed(1) : '0.0'}%
@@ -582,18 +812,24 @@ export default function Simulador() {
 
             <Field label="¿Desea período de gracia?">
               <select className="sim-sel" value={tieneGracia ? 1 : 2}
-                onChange={e => { setTieneGracia(+e.target.value === 1); setErrorGracia('') }}>
+                onChange={e => {
+                  const activa = +e.target.value === 1
+                  setTieneGracia(activa)
+                  if (!activa) setMesesGracia('')
+                  setError('')
+                }}>
                 <option value={2}>No</option>
                 <option value={1}>Sí</option>
               </select>
             </Field>
 
             {tieneGracia && (<>
-              <Field label="Meses de gracia">
+              <Field label="Meses de gracia (1 – 6)">
                 <input
-                  className="sim-solo" type="number"
+                  className="sim-solo" type="text" inputMode="numeric"
+                  placeholder="Ej: 3"
                   value={mesesGracia}
-                  onChange={e => { setMesesGracia(e.target.value); setErrorGracia('') }}
+                  onChange={e => { setMesesGracia(soloEnteros(e.target.value, 1)); setError('') }}
                 />
               </Field>
               <Field label="Tipo de gracia">
@@ -603,18 +839,7 @@ export default function Simulador() {
                   <option value={2}>Parcial — solo paga intereses y seguros</option>
                 </select>
               </Field>
-              {errorGracia && (
-                <div className="sim-error">
-                  <AlertCircle size={15} /> {errorGracia}
-                </div>
-              )}
             </>)}
-
-            {!tieneGracia && errorGracia && (
-              <div className="sim-error">
-                <AlertCircle size={15} /> {errorGracia}
-              </div>
-            )}
           </div>
 
           {/* Costos y Gastos */}
@@ -629,13 +854,14 @@ export default function Simulador() {
               ['Tasación',           tasacion,          setTasacion],
               ['Otros Gastos',       otrosGastos,       setOtrosGastos],
             ] as [string, string, (v: string) => void][]).map(([lbl, val, set]) => (
-              <Field key={lbl} label={lbl}>
+              <Field key={lbl} label={`${lbl} (opcional)`}>
                 <div className="sim-ig">
                   <span className="sim-pre">S/</span>
                   <input
-                    type="number" min={0}
+                    type="text" inputMode="decimal"
+                    placeholder="0.00"
                     value={val}
-                    onChange={e => set(e.target.value)}
+                    onChange={e => { set(soloNumeros(e.target.value, 7)); setError('') }}
                   />
                 </div>
               </Field>
@@ -646,6 +872,13 @@ export default function Simulador() {
             </div>
           </div>
         </div>
+
+        {/* — Error general de validación, siempre visible junto al botón — */}
+        {error && (
+          <div className="sim-error" style={{ marginBottom: 10 }}>
+            <AlertCircle size={15} /> {error}
+          </div>
+        )}
 
         <button className="sim-btn" onClick={simular}>
           <Calculator size={18} /> Simular Financiamiento
@@ -660,6 +893,13 @@ export default function Simulador() {
               <div>
                 <p>Cuota mensual (sin seguros)</p>
                 <h2>S/ {fmt(resumen.cuotaMensual)}</h2>
+                {/* — Detalle de lo que escogió el cliente — */}
+                <small style={{ display: 'block', marginTop: 4 }}>
+                  {resumen.vehiculoNombre} · S/ {fmt(resumen.precioVehiculo)}
+                </small>
+                <small style={{ display: 'block' }}>
+                  Inicial: {resumen.cuotaInicialPorc.toFixed(0)}% (S/ {fmt(resumen.cuotaInicialMonto)})
+                </small>
               </div>
             </div>
             <div className="stat-card">
@@ -667,7 +907,7 @@ export default function Simulador() {
               <div>
                 <p>Monto financiado</p>
                 <h2>S/ {fmt(resumen.prestamo)}</h2>
-                <small>Plazo: {resumen.plazoMeses} meses</small>
+                <small>Plazo: {resumen.plazoMeses} meses · {resumen.tipoGraciaLabel}</small>
               </div>
             </div>
             <div className="stat-card">
@@ -698,6 +938,20 @@ export default function Simulador() {
 
             {activeTab === 'resumen' && (
               <div className="sim-resumen-grid">
+                <div className="sim-resumen-section-title">Vehículo elegido</div>
+                {([
+                  ['Vehículo',       resumen.vehiculoNombre],
+                  ['Precio',         `S/ ${fmt(resumen.precioVehiculo)}`],
+                  ['Moneda',         resumen.monedaOriginal],
+                  ['Cuota inicial',  `${resumen.cuotaInicialPorc.toFixed(2)}% = S/ ${fmt(resumen.cuotaInicialMonto)}`],
+                  ['Monto financiado', `S/ ${fmt(resumen.prestamo)}`],
+                ] as [string, string][]).map(([lbl, val]) => (
+                  <div key={lbl} className="sim-resumen-row">
+                    <span className="sim-rl">{lbl}</span>
+                    <span className="sim-rv">{val}</span>
+                  </div>
+                ))}
+
                 <div className="sim-resumen-section-title">Tasas</div>
                 {([
                   ['TEA',         `${resumen.tea}%`],
@@ -714,7 +968,7 @@ export default function Simulador() {
                 <div className="sim-resumen-section-title">Plazos</div>
                 {([
                   ['Plazo total',           `${resumen.plazoMeses} meses`],
-                  ['Meses de gracia',       `${resumen.mesesGracia} meses`],
+                  ['Período de gracia',     `${resumen.mesesGracia} meses (${resumen.tipoGraciaLabel})`],
                   ['Meses de amortización', `${resumen.mesesAmortizacion} meses`],
                 ] as [string, string][]).map(([lbl, val]) => (
                   <div key={lbl} className="sim-resumen-row">

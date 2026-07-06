@@ -2,21 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
-  Car,
   ChevronsLeft,
   ChevronsRight,
-  FileText,
-  HelpCircle,
-  Home,
   LogOut,
   Menu,
-  Settings,
-  User,
-  Users,
   X,
 } from 'lucide-react';
 
 import { useAuth, type Rol } from '../context/AuthContext';
+import {
+  configNav,
+  filtrarPorRol,
+  mainNav,
+  pageTitles,
+  type NavItem,
+} from './navConfig';
 import './Layout.css';
 
 /**
@@ -58,47 +58,9 @@ function spawnMeteor(width: number): Meteor {
   };
 }
 
-interface NavItem {
-  to: string;
-  icon: typeof Home;
-  label: string;
-  badge?: number;
-  /** Roles autorizados para ver este enlace. Si se omite → visible para todos. */
-  roles?: Rol[];
-}
-
-/**
- * Menú principal.
- * - "Inicio"     → visible SIEMPRE (pantalla de bienvenida del Cliente).
- * - "Dashboard/Clientes/Historial/Ayuda" → solo Administrador.
- * - "Simulador" → visible SIEMPRE (Cliente y Administrador).
- *
- * Nota: los items no se eliminan del código; solo se filtran por rol.
- */
-const mainNav: NavItem[] = [
-  { to: '/inicio',    icon: Home,       label: 'Inicio' },
-  { to: '/dashboard', icon: Home,       label: 'Dashboard',                     roles: ['Administrador'] },
-  { to: '/clientes',  icon: User,       label: 'Clientes',                      roles: ['Administrador'] },
-  { to: '/simulador', icon: Car,        label: 'Simulador' },
-  { to: '/historial', icon: FileText,   label: 'Historial', badge: 3,           roles: ['Administrador'] },
-  { to: '/ayuda',     icon: HelpCircle, label: 'Ayuda',                         roles: ['Administrador'] },
-];
-
-const configNav: NavItem[] = [
-  { to: '/usuarios',      icon: Users,    label: 'Usuarios',      roles: ['Administrador'] },
-  { to: '/configuracion', icon: Settings, label: 'Configuración', roles: ['Administrador'] },
-];
-
-const pageTitles: Record<string, { title: string; subtitle: string }> = {
-  '/inicio':       { title: 'Inicio',         subtitle: 'Bienvenido a Valor Azul' },
-  '/dashboard':    { title: 'Dashboard',      subtitle: 'Resumen general del sistema' },
-  '/clientes':     { title: 'Clientes',       subtitle: 'Gestión de clientes registrados' },
-  '/simulador':    { title: 'Simulador',      subtitle: 'Simulador de crédito vehicular' },
-  '/historial':    { title: 'Historial',      subtitle: 'Registro de simulaciones y créditos' },
-  '/ayuda':        { title: 'Ayuda',          subtitle: 'Centro de soporte y preguntas frecuentes' },
-  '/usuarios':     { title: 'Usuarios',       subtitle: 'Gestión de usuarios del sistema' },
-  '/configuracion':{ title: 'Configuración',  subtitle: 'Administra tu perfil, empresa y preferencias' },
-};
+// La navegación (mainNav, configNav) y los pageTitles están declarados
+// en `./navConfig`. Se comparten con el sidebar interno del Simulador para
+// que el menú del cliente sea idéntico en todas las pantallas.
 
 function Layout() {
   const location = useLocation();
@@ -223,11 +185,11 @@ function Layout() {
     };
   }, []);
 
-  // Filtro por rol: un item se muestra si no declara `roles`
-  // o si el rol del usuario está incluido en la lista.
-  const puedeVer = (item: NavItem) => !item.roles || item.roles.includes(currentRole);
-  const visibleMainNav   = mainNav.filter(puedeVer);
-  const visibleConfigNav = configNav.filter(puedeVer);
+  // Filtro por rol usando la config compartida.
+  // Nota: `filtrarPorRol` usa 'Cliente' como default cuando el perfil
+  // aún no cargó, así que el sidebar del cliente NUNCA aparece vacío.
+  const visibleMainNav   = filtrarPorRol(mainNav,   perfil?.rol);
+  const visibleConfigNav = filtrarPorRol(configNav, perfil?.rol);
 
   const renderLink = (item: NavItem) => {
     const Icon = item.icon;

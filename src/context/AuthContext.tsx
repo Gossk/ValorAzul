@@ -23,6 +23,7 @@ export interface PerfilUsuario {
   email: string | null
   nombre: string
   rol: Rol
+  activo: boolean
 }
 
 interface AuthContextValue {
@@ -30,6 +31,8 @@ interface AuthContextValue {
   perfil: PerfilUsuario | null
   loading: boolean
   logout: () => Promise<void>
+  /** Refresca el perfil desde Firestore (útil tras editar rol/nombre). */
+  refreshPerfil: () => Promise<void>
   /** true si aún no terminamos de resolver auth+perfil. */
   isReady: boolean
 }
@@ -50,6 +53,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 async function cargarPerfil(user: User): Promise<PerfilUsuario> {
   let nombre = user.displayName || user.email?.split('@')[0] || 'Usuario'
   let rol: Rol = 'Cliente'
+  let activo = true
 
   try {
     // 1) Colección usuarios (recomendada para admins)
@@ -60,6 +64,7 @@ async function cargarPerfil(user: User): Promise<PerfilUsuario> {
       if (data.rol === 'Administrador' || data.rol === 'Cliente') {
         rol = data.rol
       }
+      if (typeof data.activo === 'boolean') activo = data.activo
     } else {
       // 2) Colección clientes (creada por Register.tsx)
       const clienteSnap = await getDoc(doc(db, 'clientes', user.uid))
@@ -80,6 +85,7 @@ async function cargarPerfil(user: User): Promise<PerfilUsuario> {
     email: user.email,
     nombre,
     rol,
+    activo,
   }
 }
 
@@ -90,9 +96,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
-      setLoading(true)
       setUser(u)
       if (u) {
+        // Cargamos el perfil sin bajar `loading` a true de nuevo si ya
+        // teníamos uno: así el sidebar/menú no "parpadea" entre navegaciones.
         const p = await cargarPerfil(u)
         setPerfil(p)
       } else {
@@ -102,6 +109,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     return () => unsub()
   }, [])
+
+  const refreshPerfil = async () => {
+    if (!user) return
+    const p = await cargarPerfil(user)
+    setPerfil(p)
+  }
 
   const logout = async () => {
     await signOut(auth)
@@ -114,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     perfil,
     loading,
     logout,
+    refreshPerfil,
     isReady: !loading,
   }
 

@@ -5,13 +5,19 @@ import { useAuth, type Rol } from '../context/AuthContext'
 
 /**
  * Bloquea rutas para usuarios no autenticados.
- * Mientras se resuelve el estado de auth, muestra un placeholder.
+ *
+ * Diferencias importantes respecto a la versión anterior:
+ *   - No mostramos un placeholder mientras `loading` es true si YA hay
+ *     un `user` en memoria (evita que el layout desaparezca al navegar).
+ *   - Sólo mostramos el placeholder inicial en el primer arranque
+ *     (loading && !user).
  */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
   const location = useLocation()
 
-  if (loading) {
+  // Arranque en frío: aún no sabemos si hay sesión → placeholder discreto
+  if (loading && !user) {
     return (
       <div style={{ color: 'rgba(255,255,255,0.7)', padding: 40, textAlign: 'center' }}>
         Cargando sesión...
@@ -27,6 +33,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 /**
  * Restringe una ruta a uno o varios roles.
  * Si el usuario no tiene el rol, se le redirige a /inicio.
+ *
+ * Mientras el perfil aún no cargó, mostramos los children (el propio Layout
+ * se encarga de mostrar el sidebar con un default seguro). La página en sí
+ * será re-evaluada cuando `perfil` esté disponible.
  */
 export function RequireRole({
   roles,
@@ -37,14 +47,15 @@ export function RequireRole({
 }) {
   const { perfil, loading } = useAuth()
 
-  if (loading) {
+  // Todavía no sabemos el rol: renderizamos placeholder ligero
+  if (loading || !perfil) {
     return (
       <div style={{ color: 'rgba(255,255,255,0.7)', padding: 40, textAlign: 'center' }}>
         Verificando permisos...
       </div>
     )
   }
-  if (!perfil || !roles.includes(perfil.rol)) {
+  if (!roles.includes(perfil.rol)) {
     return <Navigate to="/inicio" replace />
   }
   return <>{children}</>

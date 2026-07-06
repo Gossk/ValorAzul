@@ -21,5 +21,8 @@
   "include": [
     "vite.config.ts",
     "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "scripts/bootstrapAdmin.ts"
   ]
 }

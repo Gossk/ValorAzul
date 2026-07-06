@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  BookOpen,
   ChevronDown,
   Clock,
   CreditCard,
@@ -154,6 +155,17 @@ function Ayuda() {
             <p className="no-results">No se encontraron preguntas para tu búsqueda.</p>
           </div>
         )}
+      </div>
+
+      <div className="panel glass-card reclamos-panel fade-in">
+        <div className="reclamos-icon"><BookOpen size={28} /></div>
+        <div>
+          <h3>Libro de reclamaciones</h3>
+          <p>
+            Disponible únicamente para clientes. Registra aquí reclamos o quejas relacionados con el uso experimental de Valor Azul en el proyecto universitario.
+          </p>
+        </div>
+        <button className="btn btn-primary">Registrar reclamo</button>
       </div>
 
       <div className="contacto-grid fade-in">

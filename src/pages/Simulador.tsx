@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  Car, Bell, Menu, Calculator,
+  Car, Menu, Calculator,
   TrendingUp, DollarSign, BarChart2, Calendar,
   AlertCircle, Search, Percent, Save, LogOut, X,
 } from 'lucide-react'
@@ -865,7 +865,6 @@ export default function Simulador() {
             </div>
           </div>
           <div className="header-actions">
-            <Bell size={22} />
             <div className="admin-avatar">{(perfil?.nombre || 'U').charAt(0).toUpperCase()}</div>
             <span>{perfil?.nombre || 'Invitado'}</span>
           </div>

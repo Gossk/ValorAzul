@@ -1,23 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Bell,
-  Car,
   ChevronsLeft,
   ChevronsRight,
-  FileText,
-  HelpCircle,
-  Home,
   LogOut,
   Menu,
-  Settings,
-  User,
-  UserCircle,
-  Users,
   X,
 } from 'lucide-react';
 
 import { useAuth, type Rol } from '../context/AuthContext';
+import {
+  configNav,
+  filtrarPorRol,
+  mainNav,
+  pageTitles,
+  type NavItem,
+} from '../components/navConfig';
 import './Layout.css';
 
 /**
@@ -59,52 +57,9 @@ function spawnMeteor(width: number): Meteor {
   };
 }
 
-interface NavItem {
-  to: string;
-  icon: typeof Home;
-  label: string;
-  badge?: number;
-  /** Roles autorizados para ver este enlace. Si se omite → visible para todos. */
-  roles?: Rol[];
-}
-
-/**
- * Menú principal.
- *
- * Cliente ve:            Inicio · Simulador · Mis Simulaciones · Ayuda   (+ Mi Perfil en configuración)
- * Administrador ve:      Inicio · Dashboard · Clientes · Simulador · Historial · Ayuda
- *                        (+ Usuarios · Configuración · Mi Perfil en configuración)
- *
- * Los items se declaran una sola vez y se filtran por el campo `roles`.
- */
-const mainNav: NavItem[] = [
-  { to: '/inicio',            icon: Home,       label: 'Inicio' },
-  { to: '/dashboard',         icon: Home,       label: 'Dashboard',        roles: ['Administrador'] },
-  { to: '/clientes',          icon: User,       label: 'Clientes',         roles: ['Administrador'] },
-  { to: '/simulador',         icon: Car,        label: 'Simulador' },
-  { to: '/mis-simulaciones',  icon: FileText,   label: 'Mis Simulaciones', roles: ['Cliente'] },
-  { to: '/historial',         icon: FileText,   label: 'Historial',        badge: 3, roles: ['Administrador'] },
-  { to: '/ayuda',             icon: HelpCircle, label: 'Ayuda' },
-];
-
-const configNav: NavItem[] = [
-  { to: '/usuarios',      icon: Users,      label: 'Usuarios',      roles: ['Administrador'] },
-  { to: '/configuracion', icon: Settings,   label: 'Configuración', roles: ['Administrador'] },
-  { to: '/perfil',        icon: UserCircle, label: 'Mi Perfil' }, // visible para todos
-];
-
-const pageTitles: Record<string, { title: string; subtitle: string }> = {
-  '/inicio':           { title: 'Inicio',           subtitle: 'Bienvenido a Valor Azul' },
-  '/dashboard':        { title: 'Dashboard',        subtitle: 'Resumen general del sistema' },
-  '/clientes':         { title: 'Clientes',         subtitle: 'Gestión de clientes registrados' },
-  '/simulador':        { title: 'Simulador',        subtitle: 'Simulador de crédito vehicular' },
-  '/mis-simulaciones': { title: 'Mis Simulaciones', subtitle: 'Tu historial personal de simulaciones' },
-  '/historial':        { title: 'Historial',        subtitle: 'Registro de simulaciones y créditos' },
-  '/ayuda':            { title: 'Ayuda',            subtitle: 'Centro de soporte y preguntas frecuentes' },
-  '/usuarios':         { title: 'Usuarios',         subtitle: 'Gestión de usuarios del sistema' },
-  '/configuracion':    { title: 'Configuración',    subtitle: 'Administra tu perfil, empresa y preferencias' },
-  '/perfil':           { title: 'Mi Perfil',        subtitle: 'Actualiza tus datos personales' },
-};
+// La navegación (mainNav, configNav) y los pageTitles están declarados
+// en `./navConfig`. Se comparten con el sidebar interno del Simulador para
+// que el menú del cliente sea idéntico en todas las pantallas.
 
 function Layout() {
   const location = useLocation();
@@ -229,11 +184,11 @@ function Layout() {
     };
   }, []);
 
-  // Filtro por rol: un item se muestra si no declara `roles`
-  // o si el rol del usuario está incluido en la lista.
-  const puedeVer = (item: NavItem) => !item.roles || item.roles.includes(currentRole);
-  const visibleMainNav   = mainNav.filter(puedeVer);
-  const visibleConfigNav = configNav.filter(puedeVer);
+  // Filtro por rol usando la config compartida.
+  // Nota: `filtrarPorRol` usa 'Cliente' como default cuando el perfil
+  // aún no cargó, así que el sidebar del cliente NUNCA aparece vacío.
+  const visibleMainNav   = filtrarPorRol(mainNav,   perfil?.rol);
+  const visibleConfigNav = filtrarPorRol(configNav, perfil?.rol);
 
   const renderLink = (item: NavItem) => {
     const Icon = item.icon;
@@ -306,11 +261,6 @@ function Layout() {
           </div>
 
           <div className="sidebar-footer">
-            <button className="collapse-btn" onClick={() => setCollapsed((c) => !c)} title="Colapsar menú">
-              {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
-              <span className="link-label">Colapsar</span>
-            </button>
-
             <div className="user-box" data-tooltip={currentName}>
               <div className="avatar">{currentName.charAt(0).toUpperCase()}</div>
               <div className="link-label">
@@ -318,10 +268,24 @@ function Layout() {
                 <p>{currentEmail}</p>
                 <p style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>{currentRole}</p>
               </div>
-              <button className="logout-btn link-label" onClick={handleLogout} title="Cerrar sesión">
+            </div>
+
+            <div className="sidebar-actions-row">
+              <button
+                className="collapse-btn sidebar-icon-only"
+                onClick={() => setCollapsed((c) => !c)}
+                title={collapsed ? 'Expandir sidebar' : 'Contraer sidebar'}
+                aria-label={collapsed ? 'Expandir sidebar' : 'Contraer sidebar'}
+              >
+                {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+              </button>
+              <button className="logout-btn sidebar-logout" onClick={handleLogout} title="Cerrar sesión" aria-label="Cerrar sesión">
                 <LogOut size={16} />
+                <span className="link-label">Cerrar sesión</span>
               </button>
             </div>
+
+            <p className="sidebar-copy link-label">© 2026 Valor Azul</p>
           </div>
         </aside>
 
@@ -340,10 +304,6 @@ function Layout() {
             </div>
 
             <div className="header-actions">
-              <button className="icon-btn">
-                <Bell size={20} />
-                <span className="ping"></span>
-              </button>
               <div className="admin-avatar">{currentName.charAt(0).toUpperCase()}</div>
               <span className="header-user">{currentName}</span>
             </div>

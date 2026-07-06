@@ -24,14 +24,11 @@ import {
   User,
 } from 'lucide-react'
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
+  ComposedChart,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -56,13 +53,6 @@ interface Simulacion {
   creadoEn?: number
   tcea?: number
   totalPagar?: number
-}
-
-const ESTADO_COLORS: Record<string, string> = {
-  Aprobada:        '#22c55e',
-  'En evaluación': '#3b82f6',
-  Rechazada:       '#ef4444',
-  Guardada:        '#a855f7',
 }
 
 const badgeClass: Record<string, string> = {
@@ -160,29 +150,34 @@ function Dashboard() {
     return { total, aprobados, rechazados, enEval, guardados, clientesUnicos, montoTotal, cuotaProm, tceaProm, totalPagar }
   }, [historial])
 
-  const porMes = useMemo(() => {
-    const map: Record<string, number> = {}
+  const rendimientoPorMes = useMemo(() => {
+    const map: Record<string, { mes: string; simulaciones: number; monto: number; cuota: number }> = {}
     for (const h of historial) {
       const [, m] = h.fecha.split('/').map(Number)
       if (!m) continue
       const key = NOMBRES_MES[m - 1]
-      map[key] = (map[key] || 0) + 1
+      if (!map[key]) map[key] = { mes: key, simulaciones: 0, monto: 0, cuota: 0 }
+      map[key].simulaciones += 1
+      map[key].monto += h.monto || 0
+      map[key].cuota += h.cuota || 0
     }
     return NOMBRES_MES
       .filter((mes) => map[mes])
-      .map((mes) => ({ mes, simulaciones: map[mes] }))
+      .map((mes) => ({
+        ...map[mes],
+        ticketPromedio: map[mes].simulaciones > 0 ? Math.round(map[mes].monto / map[mes].simulaciones) : 0,
+        cuotaPromedio: map[mes].simulaciones > 0 ? Math.round(map[mes].cuota / map[mes].simulaciones) : 0,
+      }))
   }, [historial])
 
-  const porEstado = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const h of historial) counts[h.estado] = (counts[h.estado] || 0) + 1
-    return Object.entries(counts).map(([name, value]) => ({
-      name,
-      value,
-      color: ESTADO_COLORS[name] || '#94a3b8',
-    }))
-  }, [historial])
-  const totalEstados = porEstado.reduce((a, x) => a + x.value, 0)
+  const gestion = useMemo(() => {
+    const evaluadas = stats.aprobados + stats.rechazados
+    const tasaAprobacion = evaluadas > 0 ? Math.round((stats.aprobados / evaluadas) * 100) : 0
+    const tasaRechazo = evaluadas > 0 ? Math.round((stats.rechazados / evaluadas) * 100) : 0
+    const pendientes = stats.enEval + stats.guardados
+    const avance = stats.total > 0 ? Math.round((evaluadas / stats.total) * 100) : 0
+    return { evaluadas, tasaAprobacion, tasaRechazo, pendientes, avance }
+  }, [stats])
 
   const topVehiculos = useMemo(() => {
     const map: Record<string, number> = {}
@@ -266,72 +261,72 @@ function Dashboard() {
         <div className="summary-pill wide"><strong>{fmtSoles(stats.totalPagar)}</strong><span>Total proyectado a pagar</span></div>
       </div>
 
-      {/* Gráficos: simulaciones por mes + estados */}
+      {/* Rendimiento mensual + gestión */}
       <div className="middle-grid">
         <div className="glass-card panel">
-          <h3>Simulaciones por mes</h3>
+          <h3>Rendimiento mensual de financiamiento</h3>
+          <p className="panel-subtitle">Monto financiado por mes y cantidad de simulaciones guardadas.</p>
           <div className="rechart-box">
-            {porMes.length === 0 ? (
+            {rendimientoPorMes.length === 0 ? (
               <EmptyChart mensaje="Aún no hay simulaciones guardadas." />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={porMes}>
-                  <defs>
-                    <linearGradient id="colorSim" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.5} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
+                <ComposedChart data={rendimientoPorMes}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                   <XAxis dataKey="mes" stroke="rgba(255,255,255,0.4)" fontSize={12} />
-                  <YAxis allowDecimals={false} stroke="rgba(255,255,255,0.4)" fontSize={12} />
+                  <YAxis yAxisId="money" stroke="rgba(255,255,255,0.4)" fontSize={12} tickFormatter={(v) => `S/${Math.round(Number(v) / 1000)}k`} />
+                  <YAxis yAxisId="count" orientation="right" allowDecimals={false} stroke="rgba(255,255,255,0.4)" fontSize={12} />
                   <Tooltip
                     contentStyle={{ background: 'rgba(13,27,53,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, fontSize: 13 }}
                     itemStyle={{ color: '#f0f4ff' }}
+                    formatter={(value, name) => {
+                      if (name === 'monto') return [fmtSoles(Number(value)), 'Monto financiado']
+                      if (name === 'simulaciones') return [value, 'Simulaciones']
+                      if (name === 'ticketPromedio') return [fmtSoles(Number(value)), 'Ticket promedio']
+                      return [value, name]
+                    }}
                   />
-                  <Area type="monotone" dataKey="simulaciones" stroke="#3b82f6" fill="url(#colorSim)" strokeWidth={2} />
-                </AreaChart>
+                  <Bar yAxisId="money" dataKey="monto" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                  <Line yAxisId="count" type="monotone" dataKey="simulaciones" stroke="#fbbf24" strokeWidth={3} dot={{ r: 4 }} />
+                  <Line yAxisId="money" type="monotone" dataKey="ticketPromedio" stroke="#22c55e" strokeWidth={2} dot={false} strokeDasharray="5 5" />
+                </ComposedChart>
               </ResponsiveContainer>
             )}
           </div>
         </div>
 
-        <div className="glass-card panel">
-          <h3>Distribución por estado</h3>
-          <div className="status-content">
-            <div className="donut-chart">
-              {totalEstados === 0 ? (
-                <EmptyChart mensaje="Sin datos aún." />
-              ) : (
-                <>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={porEstado} cx="50%" cy="50%" innerRadius={50} outerRadius={75} dataKey="value" stroke="none">
-                        {porEstado.map((entry, i) => (<Cell key={i} fill={entry.color} />))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="donut-center">
-                    <strong>{totalEstados}</strong>
-                    <span>Total</span>
-                  </div>
-                </>
-              )}
+        <div className="glass-card panel gestion-panel">
+          <h3>Gestión de solicitudes</h3>
+          <p className="panel-subtitle">Prioriza pendientes y mide la efectividad de evaluación.</p>
+          <div className="gestion-grid">
+            <div className="gestion-card highlight">
+              <span>Pendientes por revisar</span>
+              <strong>{gestion.pendientes}</strong>
+              <small>{stats.enEval} en evaluación · {stats.guardados} guardadas</small>
             </div>
-
-            <div className="legend">
-              {porEstado.map((item) => (
-                <p key={item.name}>
-                  <span className="dot" style={{ background: item.color }} />
-                  {item.name}
-                  <b>{totalEstados > 0 ? Math.round((item.value / totalEstados) * 100) : 0}% ({item.value})</b>
-                </p>
-              ))}
-              {porEstado.length === 0 && (
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
-                  Sin simulaciones aún.
-                </p>
-              )}
+            <div className="gestion-card">
+              <span>Solicitudes evaluadas</span>
+              <strong>{gestion.evaluadas}</strong>
+              <small>{gestion.avance}% del total procesado</small>
+            </div>
+            <div className="gestion-card ok">
+              <span>Tasa de aprobación</span>
+              <strong>{gestion.tasaAprobacion}%</strong>
+              <small>{stats.aprobados} aprobadas</small>
+            </div>
+            <div className="gestion-card danger">
+              <span>Tasa de rechazo</span>
+              <strong>{gestion.tasaRechazo}%</strong>
+              <small>{stats.rechazados} rechazadas</small>
+            </div>
+          </div>
+          <div className="gestion-progress">
+            <div className="gestion-progress-label">
+              <span>Avance de evaluación</span>
+              <b>{gestion.avance}%</b>
+            </div>
+            <div className="gestion-progress-track">
+              <div style={{ width: `${gestion.avance}%` }} />
             </div>
           </div>
         </div>

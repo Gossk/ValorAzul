@@ -17,7 +17,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth'
-import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db, firebaseConfig } from '../firebaseConfig'
 
 const SECONDARY_APP_NAME = 'valorazul-admin-worker'
@@ -93,12 +93,71 @@ export async function crearAdministrador(params: {
   }
 }
 
-/** Cambia el rol de un usuario existente ('Cliente' ⇄ 'Administrador'). */
-export async function cambiarRol(uid: string, nuevoRol: 'Cliente' | 'Administrador') {
-  await updateDoc(doc(db, 'usuarios', uid), { rol: nuevoRol })
+/** Cambia el rol de un usuario existente ('Cliente' ⇄ 'Administrador').
+ * Usa setDoc + merge porque algunos clientes antiguos solo existen en
+ * `clientes/{uid}` y todavía no tienen espejo en `usuarios/{uid}`.
+ */
+export async function cambiarRol(
+  uid: string,
+  nuevoRol: 'Cliente' | 'Administrador',
+  datos?: { nombre?: string; email?: string; fechaRegistro?: string },
+) {
+  const payload = {
+    uid,
+    ...(datos?.nombre ? { nombre: datos.nombre } : {}),
+    ...(datos?.email ? { email: datos.email } : {}),
+    ...(datos?.fechaRegistro ? { fechaRegistro: datos.fechaRegistro } : {}),
+    rol: nuevoRol,
+    activo: true,
+    actualizadoEnServer: serverTimestamp(),
+  }
+
+  // Importante: setDoc con merge CREA el documento si no existe.
+  // Esto soluciona clientes antiguos que solo existen en `clientes/{uid}`.
+  await setDoc(doc(db, 'usuarios', uid), payload, { merge: true })
+
+  // Mantiene sincronizado el rol visible en la colección de clientes.
+  // Si reglas antiguas no permiten tocar `clientes`, no bloqueamos el cambio principal.
+  try {
+    await setDoc(
+      doc(db, 'clientes', uid),
+      {
+        uid,
+        ...(datos?.nombre ? { nombre: datos.nombre } : {}),
+        ...(datos?.email ? { email: datos.email } : {}),
+        rol: nuevoRol,
+        estado: 'Activo',
+        actualizadoEnServer: serverTimestamp(),
+      },
+      { merge: true },
+    )
+  } catch (err) {
+    console.warn('[cambiarRol] No se pudo sincronizar clientes:', err)
+  }
 }
 
 /** Activa o desactiva la cuenta (visualmente y para bloqueo posterior). */
 export async function cambiarEstadoActivo(uid: string, activo: boolean) {
-  await updateDoc(doc(db, 'usuarios', uid), { activo })
+  await setDoc(
+    doc(db, 'usuarios', uid),
+    {
+      uid,
+      activo,
+      actualizadoEnServer: serverTimestamp(),
+    },
+    { merge: true },
+  )
+  try {
+    await setDoc(
+      doc(db, 'clientes', uid),
+      {
+        uid,
+        estado: activo ? 'Activo' : 'Inactivo',
+        actualizadoEnServer: serverTimestamp(),
+      },
+      { merge: true },
+    )
+  } catch (err) {
+    console.warn('[cambiarEstadoActivo] No se pudo sincronizar clientes:', err)
+  }
 }

@@ -151,8 +151,12 @@ function Usuarios() {
     setBusyId(row.id)
     setRowMsg(null)
     try {
-      await cambiarRol(row.id, nuevoRol)
-      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, rol: nuevoRol, fuente: 'usuarios' } : r)))
+      await cambiarRol(row.id, nuevoRol, {
+        nombre: row.nombre,
+        email: row.email,
+        fechaRegistro: row.fechaRegistro,
+      })
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, rol: nuevoRol, activo: true, fuente: 'usuarios' } : r)))
       setRowMsg({ id: row.id, text: `Rol actualizado a ${nuevoRol}.`, ok: true })
     } catch (err: any) {
       setRowMsg({ id: row.id, text: err?.message || 'No se pudo cambiar el rol.', ok: false })

@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth'
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db } from '../firebaseConfig'
 
 /**
@@ -56,25 +56,51 @@ async function cargarPerfil(user: User): Promise<PerfilUsuario> {
   let activo = true
 
   try {
-    // 1) Colección usuarios (recomendada para admins)
-    const usuarioSnap = await getDoc(doc(db, 'usuarios', user.uid))
-    if (usuarioSnap.exists()) {
-      const data = usuarioSnap.data() as any
-      if (data.nombre) nombre = data.nombre
-      if (data.rol === 'Administrador' || data.rol === 'Cliente') {
-        rol = data.rol
-      }
-      if (typeof data.activo === 'boolean') activo = data.activo
-    } else {
-      // 2) Colección clientes (creada por Register.tsx)
-      const clienteSnap = await getDoc(doc(db, 'clientes', user.uid))
-      if (clienteSnap.exists()) {
-        const data = clienteSnap.data() as any
-        if (data.nombre) nombre = data.nombre
-        if (data.rol === 'Administrador' || data.rol === 'Cliente') {
-          rol = data.rol
-        }
-      }
+    // Leemos ambas colecciones. `usuarios/{uid}` es la fuente principal del rol,
+    // pero algunos clientes antiguos solo tienen `clientes/{uid}` o tienen un
+    // `usuarios/{uid}` parcial creado por el heartbeat sin campo `rol`.
+    const usuarioRef = doc(db, 'usuarios', user.uid)
+    const clienteRef = doc(db, 'clientes', user.uid)
+    const [usuarioSnap, clienteSnap] = await Promise.all([
+      getDoc(usuarioRef),
+      getDoc(clienteRef),
+    ])
+
+    const usuarioData = usuarioSnap.exists() ? (usuarioSnap.data() as any) : null
+    const clienteData = clienteSnap.exists() ? (clienteSnap.data() as any) : null
+
+    nombre = usuarioData?.nombre || clienteData?.nombre || nombre
+
+    if (usuarioData?.rol === 'Administrador' || usuarioData?.rol === 'Cliente') {
+      rol = usuarioData.rol
+    } else if (clienteData?.rol === 'Administrador' || clienteData?.rol === 'Cliente') {
+      rol = clienteData.rol
+    }
+
+    if (typeof usuarioData?.activo === 'boolean') {
+      activo = usuarioData.activo
+    } else if (typeof clienteData?.activo === 'boolean') {
+      activo = clienteData.activo
+    } else if (clienteData?.estado === 'Inactivo') {
+      activo = false
+    }
+
+    // Normaliza documentos parciales: si falta `usuarios/{uid}` o no tiene rol,
+    // lo crea/actualiza sin borrar datos existentes. Así Cliente y Administrador
+    // quedan diferenciados siempre por `usuarios.rol`.
+    if (!usuarioSnap.exists() || !usuarioData?.rol) {
+      await setDoc(
+        usuarioRef,
+        {
+          uid: user.uid,
+          email: user.email,
+          nombre,
+          rol,
+          activo,
+          fechaRegistro: usuarioData?.fechaRegistro || clienteData?.fechaRegistro || new Date().toLocaleDateString('es-PE'),
+        },
+        { merge: true },
+      )
     }
   } catch (err) {
     console.warn('[AuthContext] No se pudo cargar el perfil desde Firestore:', err)
@@ -109,6 +135,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     return () => unsub()
   }, [])
+
+  // Escucha cambios de rol en tiempo real. Si un admin promueve/degrada a un
+  // usuario, la sesión abierta actualiza permisos y sidebar sin reloguear.
+  useEffect(() => {
+    if (!user?.uid) return
+    const unsub = onSnapshot(doc(db, 'usuarios', user.uid), (snap) => {
+      if (!snap.exists()) return
+      const data = snap.data() as any
+      setPerfil((prev) => {
+        if (!prev) return prev
+        const nextRol: Rol = data.rol === 'Administrador' ? 'Administrador' : 'Cliente'
+        return {
+          ...prev,
+          nombre: data.nombre || prev.nombre,
+          rol: nextRol,
+          activo: typeof data.activo === 'boolean' ? data.activo : prev.activo,
+        }
+      })
+    }, (err) => console.warn('[AuthContext] rol listener:', err))
+    return () => unsub()
+  }, [user?.uid])
 
   // ── Heartbeat de conexión ──
   // Marcamos al usuario como "en línea" mientras el navegador esté abierto

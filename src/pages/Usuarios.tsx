@@ -5,16 +5,14 @@ import {
   Plus,
   Search,
   ShieldAlert,
-  ShieldCheck,
   UserPlus,
   X,
 } from 'lucide-react'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from '../firebaseConfig'
 import { useAuth } from '../context/AuthContext'
 import {
   cambiarEstadoActivo,
-  cambiarRol,
   crearAdministrador,
 } from '../lib/adminUsers'
 import './Usuarios.css'
@@ -151,13 +149,39 @@ function Usuarios() {
     setBusyId(row.id)
     setRowMsg(null)
     try {
-      await cambiarRol(row.id, nuevoRol, {
-        nombre: row.nombre,
-        email: row.email,
-        fechaRegistro: row.fechaRegistro,
-      })
+      // setDoc + merge CREA `usuarios/{uid}` si no existe. No usar updateDoc aquí,
+      // porque clientes antiguos pueden existir solo en `clientes/{uid}`.
+      await setDoc(
+        doc(db, 'usuarios', row.id),
+        {
+          uid: row.id,
+          nombre: row.nombre,
+          email: row.email,
+          fechaRegistro: row.fechaRegistro || new Date().toLocaleDateString('es-PE'),
+          rol: nuevoRol,
+          activo: true,
+          actualizadoEnServer: serverTimestamp(),
+        },
+        { merge: true },
+      )
+      try {
+        await setDoc(
+          doc(db, 'clientes', row.id),
+          {
+            uid: row.id,
+            nombre: row.nombre,
+            email: row.email,
+            rol: nuevoRol,
+            estado: 'Activo',
+            actualizadoEnServer: serverTimestamp(),
+          },
+          { merge: true },
+        )
+      } catch (syncErr) {
+        console.warn('[Usuarios] No se pudo sincronizar clientes:', syncErr)
+      }
       setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, rol: nuevoRol, activo: true, fuente: 'usuarios' } : r)))
-      setRowMsg({ id: row.id, text: `Rol actualizado a ${nuevoRol}.`, ok: true })
+      setRowMsg({ id: row.id, text: `Rol actualizado a ${nuevoRol}. El cambio aplicará en el siguiente inicio de sesión del usuario.`, ok: true })
     } catch (err: any) {
       setRowMsg({ id: row.id, text: err?.message || 'No se pudo cambiar el rol.', ok: false })
     } finally {
@@ -274,10 +298,19 @@ function Usuarios() {
                     </td>
                     <td>{u.email || '—'}</td>
                     <td>
-                      <span className={`badge ${u.rol === 'Administrador' ? 'badge-purple' : 'badge-blue'}`}>
-                        {u.rol === 'Administrador' ? <ShieldCheck size={12} style={{ marginRight: 4 }} /> : null}
-                        {u.rol}
-                      </span>
+                      <div className="role-control">
+                        <select
+                          className={u.rol === 'Administrador' ? 'role-select is-admin' : 'role-select is-client'}
+                          value={u.rol}
+                          disabled={busyId === u.id}
+                          onChange={(e) => onCambiarRol(u, e.target.value as Rol)}
+                          title="Cambiar rol del usuario"
+                        >
+                          <option value="Cliente">Cliente</option>
+                          <option value="Administrador">Administrador</option>
+                        </select>
+                        {busyId === u.id && <Loader2 size={12} className="spin" />}
+                      </div>
                     </td>
                     <td>
                       <span className={`badge ${u.activo ? 'badge-green' : 'badge-red'}`}>
@@ -287,27 +320,6 @@ function Usuarios() {
                     <td>{u.fechaRegistro || '—'}</td>
                     <td>
                       <div className="usuarios-row-actions">
-                        {u.rol === 'Cliente' ? (
-                          <button
-                            className="btn-mini promote"
-                            disabled={busyId === u.id}
-                            onClick={() => onCambiarRol(u, 'Administrador')}
-                            title="Promover a Administrador"
-                          >
-                            {busyId === u.id ? <Loader2 size={12} className="spin" /> : <ShieldCheck size={12} />}
-                            Hacer admin
-                          </button>
-                        ) : (
-                          <button
-                            className="btn-mini demote"
-                            disabled={busyId === u.id}
-                            onClick={() => onCambiarRol(u, 'Cliente')}
-                            title="Quitar rol de Administrador"
-                          >
-                            {busyId === u.id ? <Loader2 size={12} className="spin" /> : <ShieldAlert size={12} />}
-                            Quitar admin
-                          </button>
-                        )}
                         <button
                           className={`btn-mini ${u.activo ? 'ghost-red' : 'ghost-green'}`}
                           disabled={busyId === u.id}

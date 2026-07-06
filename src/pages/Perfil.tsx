@@ -1,6 +1,6 @@
 // src/pages/Perfil.tsx
 import { useEffect, useState } from 'react'
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { Mail, Phone, Save, ShieldCheck, User } from 'lucide-react'
 import { db } from '../firebaseConfig'
 import { useAuth } from '../context/AuthContext'
@@ -80,7 +80,6 @@ function Perfil() {
     try {
       // Actualiza en `clientes/{uid}`, creando el doc si no existe.
       const ref = doc(db, 'clientes', user.uid)
-      const snap = await getDoc(ref)
       const payload = {
         nombre:   datos.nombre.trim(),
         dni:      datos.dni.trim(),
@@ -88,15 +87,10 @@ function Perfil() {
         email:    datos.email.trim(),
         usuario:  datos.usuario.trim(),
       }
-      if (snap.exists()) {
-        await updateDoc(ref, payload)
-      } else {
-        await setDoc(ref, { ...payload, rol: 'Cliente', uid: user.uid })
-      }
-      // Sincroniza el nombre en `usuarios/{uid}` (fuente de verdad del rol).
-      try {
-        await updateDoc(doc(db, 'usuarios', user.uid), { nombre: payload.nombre })
-      } catch { /* si no existe aún, no pasa nada */ }
+      await setDoc(ref, { ...payload, rol: datos.rol || perfil?.rol || 'Cliente', uid: user.uid }, { merge: true })
+      // Sincroniza el nombre en `usuarios/{uid}` (fuente de verdad del rol),
+      // creando el doc si todavía no existe.
+      await setDoc(doc(db, 'usuarios', user.uid), { uid: user.uid, nombre: payload.nombre }, { merge: true })
 
       setOkMsg('¡Datos actualizados correctamente!')
     } catch (e: any) {

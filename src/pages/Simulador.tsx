@@ -559,10 +559,19 @@ export default function Simulador() {
       totSegVeh += segVehMes
       totPagado += cuotaTotal
 
+      // — Cuota base según método francés —
+      //   • normal          → cuota francesa constante (interés + amortización)
+      //   • gracia parcial  → solo se paga el interés del período (no amortiza),
+      //                        por eso la cuota base = interés del mes
+      //   • gracia total    → no se paga nada, cuota base = 0
+      const cuotaBaseFila =
+        tipo === 'gracia_total'   ? 0 :
+        tipo === 'gracia_parcial' ? +intMes.toFixed(2) :
+                                    +cuotaBase.toFixed(2)
+
       nuevoCron.push({
         mes, tipo,
-        // Durante la gracia (total o parcial) no se paga cuota base
-        cuotaBase:         tipo === 'normal' ? +cuotaBase.toFixed(2) : 0,
+        cuotaBase:         cuotaBaseFila,
         cuotaTotal:        +cuotaTotal.toFixed(2),
         interes:           +intMes.toFixed(2),
         amortizacion:      +amort.toFixed(2),

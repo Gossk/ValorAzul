@@ -3,9 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Car, Bell, Menu, Calculator,
   TrendingUp, DollarSign, BarChart2, Calendar,
-  AlertCircle, Search, Percent, Save, LogOut,
+  AlertCircle, Search, Percent, Save, LogOut, X,
 } from 'lucide-react'
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { addDoc, collection, doc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from '../firebaseConfig'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -202,6 +202,7 @@ export default function Simulador() {
   const navigate = useNavigate()
   const location = useLocation()
   const { perfil, user, logout } = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   // Menú compartido con el Layout principal (mismo aspecto en toda la app)
   const visibleMain   = filtrarPorRol(mainNav,   perfil?.rol)
@@ -682,7 +683,7 @@ export default function Simulador() {
       const nombreCliente = perfil?.nombre || perfil?.email || 'Cliente'
 
       // 2) Guardado detallado en `simulaciones` (dueño = user.uid)
-      await addDoc(collection(db, 'simulaciones'), {
+      const simulacionRef = await addDoc(collection(db, 'simulaciones'), {
         uid:            user.uid,
         cliente:        nombreCliente,
         email:          perfil?.email ?? '',
@@ -704,9 +705,10 @@ export default function Simulador() {
         resumen,
       })
 
-      // 3) Guardado resumido en `historial` (formato compatible con Admin)
-      //    — el Dashboard/Historial ya leen esta colección.
-      await addDoc(collection(db, 'historial'), {
+      // 3) Guardado resumido en `historial` usando el MISMO id que la simulación.
+      //    Así el estado que cambie el admin puede sincronizarse con "Mis Simulaciones".
+      await setDoc(doc(db, 'historial', simulacionRef.id), {
+        simulacionId: simulacionRef.id,
         uid:      user.uid,
         cliente:  nombreCliente,
         vehiculo: resumen.vehiculoNombre,
@@ -768,8 +770,10 @@ export default function Simulador() {
   return (
     <div className="dashboard-layout">
 
+      {mobileOpen && <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
+
       {/* ── SIDEBAR ── */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
         <div>
           <div className="brand">
             <div className="logo-container">
@@ -788,6 +792,9 @@ export default function Simulador() {
                 <span className="logo-sub">AZUL</span>
               </div>
             </div>
+            <button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="Cerrar menú">
+              <X size={20} />
+            </button>
           </div>
 
           <p className="menu-title">PRINCIPAL</p>
@@ -796,7 +803,7 @@ export default function Simulador() {
               const Icon = item.icon
               const active = location.pathname === item.to
               return (
-                <Link key={item.to} to={item.to} className={active ? 'active' : ''}>
+                <Link key={item.to} to={item.to} className={active ? 'active' : ''} onClick={() => setMobileOpen(false)}>
                   <Icon size={18} /> {item.label}
                 </Link>
               )
@@ -811,7 +818,7 @@ export default function Simulador() {
                   const Icon = item.icon
                   const active = location.pathname === item.to
                   return (
-                    <Link key={item.to} to={item.to} className={active ? 'active' : ''}>
+                    <Link key={item.to} to={item.to} className={active ? 'active' : ''} onClick={() => setMobileOpen(false)}>
                       <Icon size={18} /> {item.label}
                     </Link>
                   )
@@ -849,7 +856,9 @@ export default function Simulador() {
 
         <header className="header">
           <div className="header-left">
-            <Menu size={24} />
+            <button className="icon-btn menu-toggle" onClick={() => setMobileOpen(true)} aria-label="Abrir menú">
+              <Menu size={20} />
+            </button>
             <div>
               <h1>Simulador de Crédito</h1>
               <p>Calcula tu financiamiento vehicular</p>

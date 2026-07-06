@@ -86,7 +86,7 @@ const fmtDecimal = (n: number) => n.toLocaleString('es-PE', {
 
 function Dashboard() {
   const [historial, setHistorial]     = useState<Simulacion[]>([])
-  const [totalUsuarios, setTotalUsuarios] = useState(0)
+  const [totalClientesRegistrados, setTotalClientesRegistrados] = useState(0)
   const [loading, setLoading]         = useState(true)
   const [refreshedAt, setRefreshedAt] = useState<Date>(new Date())
 
@@ -127,7 +127,14 @@ function Dashboard() {
 
     const unsub2 = onSnapshot(
       collection(db, 'usuarios'),
-      (snap) => setTotalUsuarios(snap.size),
+      (snap) => {
+        let clientes = 0
+        snap.forEach((d) => {
+          const data = d.data() as any
+          if ((data.rol || 'Cliente') === 'Cliente') clientes += 1
+        })
+        setTotalClientesRegistrados(clientes)
+      },
       (err) => console.warn('[Dashboard] usuarios:', err),
     )
 
@@ -201,12 +208,18 @@ function Dashboard() {
   }
 
   return (
-    <>
-      <div className="date-box" title={`Actualizado ${refreshedAt.toLocaleTimeString('es-PE')}`}>
+    <div className="dashboard-page">
+      <div className="dashboard-topbar">
+        <div>
+          <h2>Panel administrativo</h2>
+          <p>Resumen en tiempo real de simulaciones guardadas por clientes.</p>
+        </div>
+        <div className="date-box" title={`Actualizado ${refreshedAt.toLocaleTimeString('es-PE')}`}>
         <Calendar size={16} /> {hoy} · <RefreshCw size={13} style={{ marginLeft: 4 }} />
-        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>
-          tiempo real
-        </span>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>
+            tiempo real
+          </span>
+        </div>
       </div>
 
       {/* KPIs primarios */}
@@ -224,7 +237,7 @@ function Dashboard() {
           <div>
             <p>Clientes con simulaciones</p>
             <h2>{stats.clientesUnicos}</h2>
-            <span>De {totalUsuarios} usuarios registrados</span>
+            <span>De {totalClientesRegistrados} clientes registrados</span>
           </div>
         </div>
         <div className="glass-card stat-card">
@@ -243,6 +256,14 @@ function Dashboard() {
             <span>Todas las simulaciones</span>
           </div>
         </div>
+      </div>
+
+      <div className="dashboard-summary-row">
+        <div className="summary-pill"><strong>{stats.guardados}</strong><span>Guardadas</span></div>
+        <div className="summary-pill"><strong>{stats.enEval}</strong><span>En evaluación</span></div>
+        <div className="summary-pill"><strong>{stats.aprobados}</strong><span>Aprobadas</span></div>
+        <div className="summary-pill"><strong>{stats.rechazados}</strong><span>Rechazadas</span></div>
+        <div className="summary-pill wide"><strong>{fmtSoles(stats.totalPagar)}</strong><span>Total proyectado a pagar</span></div>
       </div>
 
       {/* Gráficos: simulaciones por mes + estados */}
@@ -349,6 +370,7 @@ function Dashboard() {
 
         <div className="glass-card panel table-panel">
           <h3>Últimas simulaciones ({recientes.length})</h3>
+          <div className="dashboard-table-wrap">
           <table>
             <thead>
               <tr>
@@ -382,9 +404,10 @@ function Dashboard() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 

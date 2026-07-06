@@ -267,6 +267,34 @@ body,
   font-size: 13px;
 }
 
+.terms-box {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: flex-start;
+  margin: 18px 0 6px;
+  padding: 13px 14px;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.08);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12.5px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.terms-box input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.terms-box span {
+  min-width: 0;
+}
+
 /* =====================================================
    ANIMATION
 ===================================================== */

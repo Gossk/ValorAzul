@@ -34,6 +34,7 @@ interface RegistroFS {
   creadoEn?: number
   tcea?: number
   totalPagar?: number
+  simulacionId?: string
 }
 
 const badgeClass: Record<string, string> = {
@@ -84,6 +85,7 @@ function Historial() {
             creadoEn: Number(data.creadoEn) || 0,
             tcea: Number(data.tcea) || 0,
             totalPagar: Number(data.totalPagar) || 0,
+            simulacionId: data.simulacionId || docSnap.id,
           })
         })
         lista.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0))
@@ -147,6 +149,13 @@ function Historial() {
     setBusyId(id)
     try {
       await updateDoc(doc(db, 'historial', id), { estado: nuevo })
+      // El historial se guarda con el mismo id que la simulación del cliente.
+      // Si existe el documento espejo, actualizamos también "Mis Simulaciones".
+      try {
+        await updateDoc(doc(db, 'simulaciones', id), { estado: nuevo })
+      } catch (mirrorErr) {
+        console.warn('No se pudo sincronizar el estado en simulaciones:', mirrorErr)
+      }
       // onSnapshot refresca automáticamente
     } catch (err) {
       console.error(err)

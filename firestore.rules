@@ -1,0 +1,130 @@
+rules_version = '2';
+
+// =============================================================================
+// Reglas de seguridad de Firestore — Valor Azul
+// =============================================================================
+// Roles:
+//   - Cliente        → puede leer y escribir SOLO sus propios documentos.
+//   - Administrador  → puede leer y escribir TODO.
+//
+// El rol se almacena en /usuarios/{uid}.rol y es la fuente de verdad.
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------- Helpers -------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function userDoc() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && userDoc().data.rol == 'Administrador';
+    }
+
+    // -------------------- usuarios/{uid} --------------------
+    // Fuente de verdad del rol de cada persona.
+    //
+    // Reglas:
+    //   - Los admins pueden leer/listar TODOS los usuarios y cambiar rol/estado
+    //     de cualquier cuenta (incluye crear otros administradores desde la UI).
+    //   - Un usuario normal puede leer/editar SU documento, pero NUNCA cambiar
+    //     su propio `rol` ni su propio `activo` (esas transiciones sólo las
+    //     hace un admin).
+    //   - En el auto-registro por /register, sólo se permite crearse como
+    //     'Cliente' y activo = true.
+    //   - El PRIMER administrador se crea fuera de la app:
+    //       • manualmente en la Consola de Firestore, o
+    //       • con el script `scripts/bootstrapAdmin.ts` (usa Admin SDK).
+    match /usuarios/{uid} {
+      allow read, list: if isSelf(uid) || isAdmin();
+
+      // Auto-registro: solo como Cliente activo.
+      allow create: if isSelf(uid)
+        && request.resource.data.rol == 'Cliente'
+        && (
+          !('activo' in request.resource.data)
+          || request.resource.data.activo == true
+        );
+
+      // Actualización:
+      //   - Admin: puede todo.
+      //   - Uno mismo: puede editar sus datos, pero NO cambiar rol/activo.
+      allow update: if isAdmin() || (
+        isSelf(uid)
+        && request.resource.data.rol == resource.data.rol
+        && (
+          !('activo' in request.resource.data)
+          || !('activo' in resource.data)
+          || request.resource.data.activo == resource.data.activo
+        )
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // -------------------- clientes/{uid} --------------------
+    // Datos personales de cada cliente registrado desde la web.
+    match /clientes/{uid} {
+      allow read:   if isSelf(uid) || isAdmin();
+      allow create: if isSelf(uid);
+      allow update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // -------------- clientes_negocio/{docId} --------------
+    // Cartera de clientes del negocio (solo admins).
+    match /clientes_negocio/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // -------------- simulaciones/{docId} --------------
+    // Cada simulación guarda `uid` = dueño.
+    // Un cliente lee/escribe SOLO sus propias simulaciones.
+    // Un admin ve todas.
+    match /simulaciones/{docId} {
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow read, update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // -------------- historial/{docId} --------------
+    // Colección global usada por el Dashboard/Historial del admin.
+    // - Cualquier usuario autenticado puede CREAR un registro
+    //   (lo hace el Simulador al pulsar "Guardar simulación"),
+    //   siempre y cuando `uid == request.auth.uid`.
+    // - Los clientes pueden LEER solo sus propios registros
+    //   (para eventualmente mostrarlos en su vista).
+    // - Los admins pueden leer/actualizar/eliminar TODO.
+    match /historial/{docId} {
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow read:   if isAdmin()
+        || (isSignedIn() && resource.data.uid == request.auth.uid);
+
+      allow update, delete: if isAdmin();
+    }
+
+    // -------------- configuracion/{docId} --------------
+    // Configuración global (solo admin puede modificar; lectura autenticada).
+    match /configuracion/{docId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Cualquier otra ruta → denegada por defecto.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

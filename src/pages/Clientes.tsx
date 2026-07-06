@@ -174,7 +174,8 @@ function Clientes() {
         </div>
       </div>
 
-      <div className="glass-card panel">
+      <div className="glass-card panel clientes-table-panel">
+        <div className="responsive-table-wrap">
         <table className="clientes-table">
           <thead>
             <tr>
@@ -242,6 +243,7 @@ function Clientes() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </>
   )

@@ -19,6 +19,7 @@ function Register() {
     password: '',
     confirmPassword: '',
   })
+  const [aceptaTerminos, setAceptaTerminos] = useState(false)
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -50,6 +51,11 @@ function Register() {
       return
     }
 
+    if (!aceptaTerminos) {
+      setError('Debes aceptar los términos y condiciones sobre el uso experimental de datos.')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -72,6 +78,9 @@ function Register() {
         rol: 'Cliente',
         fechaRegistro: new Date().toLocaleDateString('es-PE'),
         uid: user.uid,
+        terminosAceptados: true,
+        terminosAceptadosEn: new Date().toISOString(),
+        avisoUsoDatos: 'Datos experimentales usados únicamente para proyecto universitario.',
       })
 
       // 2.b) Fuente única de verdad para roles: colección `usuarios/{uid}`.
@@ -82,6 +91,9 @@ function Register() {
         rol: 'Cliente',
         activo: true,
         fechaRegistro: new Date().toLocaleDateString('es-PE'),
+        terminosAceptados: true,
+        terminosAceptadosEn: new Date().toISOString(),
+        avisoUsoDatos: 'Datos experimentales usados únicamente para proyecto universitario.',
       })
 
       // 3) Redirigir al login tras registro exitoso
@@ -207,11 +219,22 @@ function Register() {
           </div>
         </div>
 
+        <label className="terms-box">
+          <input
+            type="checkbox"
+            checked={aceptaTerminos}
+            onChange={(e) => setAceptaTerminos(e.target.checked)}
+          />
+          <span>
+            Acepto los términos y condiciones sobre el uso de mis datos. Entiendo que la información ingresada y las simulaciones generadas son datos experimentales, usados únicamente con fines académicos para este proyecto universitario, y no serán utilizados para otros fines.
+          </span>
+        </label>
+
         <button
           className="login-button"
           onClick={handleSubmit}
-          disabled={loading}
-          style={{ opacity: loading ? 0.6 : 1 }}
+          disabled={loading || !aceptaTerminos}
+          style={{ opacity: loading || !aceptaTerminos ? 0.6 : 1 }}
         >
           {loading ? 'Creando cuenta...' : 'Crear cuenta'}
         </button>

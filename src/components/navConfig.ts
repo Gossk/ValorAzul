@@ -10,8 +10,7 @@
 //
 // Reglas por rol:
 //   Cliente        → Inicio · Simulador · Mis Simulaciones · Ayuda · Mi Perfil
-//   Administrador  → Inicio · Dashboard · Clientes · Simulador · Historial · Ayuda
-//                    + Usuarios · Configuración · Mi Perfil
+//   Administrador  → Dashboard · Clientes · Historial · Usuarios · Mi Perfil
 //
 // Si `roles` no está definido, el item es visible para todos.
 
@@ -21,7 +20,6 @@ import {
   HelpCircle,
   Home,
   LayoutDashboard,
-  Settings,
   User,
   UserCircle,
   Users,
@@ -38,18 +36,17 @@ export interface NavItem {
 }
 
 export const mainNav: NavItem[] = [
-  { to: '/inicio',            icon: Home,            label: 'Inicio' },
+  { to: '/inicio',            icon: Home,            label: 'Inicio',           roles: ['Cliente'] },
   { to: '/dashboard',         icon: LayoutDashboard, label: 'Dashboard',        roles: ['Administrador'] },
   { to: '/clientes',          icon: User,            label: 'Clientes',         roles: ['Administrador'] },
-  { to: '/simulador',         icon: Car,             label: 'Simulador' },
+  { to: '/simulador',         icon: Car,             label: 'Simulador',        roles: ['Cliente'] },
   { to: '/mis-simulaciones',  icon: FileText,        label: 'Mis Simulaciones', roles: ['Cliente'] },
   { to: '/historial',         icon: FileText,        label: 'Historial',        roles: ['Administrador'] },
-  { to: '/ayuda',             icon: HelpCircle,      label: 'Ayuda' },
+  { to: '/ayuda',             icon: HelpCircle,      label: 'Ayuda',            roles: ['Cliente'] },
 ]
 
 export const configNav: NavItem[] = [
   { to: '/usuarios',      icon: Users,      label: 'Usuarios',      roles: ['Administrador'] },
-  { to: '/configuracion', icon: Settings,   label: 'Configuración', roles: ['Administrador'] },
   { to: '/perfil',        icon: UserCircle, label: 'Mi Perfil' }, // visible siempre
 ]
 
@@ -62,16 +59,15 @@ export const pageTitles: Record<string, { title: string; subtitle: string }> = {
   '/historial':        { title: 'Historial',        subtitle: 'Registro de simulaciones y créditos' },
   '/ayuda':            { title: 'Ayuda',            subtitle: 'Centro de soporte y preguntas frecuentes' },
   '/usuarios':         { title: 'Usuarios',         subtitle: 'Gestión de usuarios del sistema' },
-  '/configuracion':    { title: 'Configuración',    subtitle: 'Administra tu perfil, empresa y preferencias' },
   '/perfil':           { title: 'Mi Perfil',        subtitle: 'Actualiza tus datos personales' },
 }
 
 /**
- * Filtra un menú por rol. Si `roles` no está definido, el item pasa.
- * Se usa un default seguro ('Cliente') cuando aún no ha cargado el perfil,
- * de modo que el sidebar del cliente NUNCA aparezca vacío en el primer render.
+ * Filtra un menú por rol.
+ * Si el perfil aún no cargó, NO asumimos Cliente: así evitamos que a un
+ * Administrador le aparezcan temporalmente Inicio/Simulador/Ayuda.
  */
 export function filtrarPorRol(items: NavItem[], rol: Rol | undefined): NavItem[] {
-  const efectivo: Rol = rol ?? 'Cliente'
-  return items.filter((it) => !it.roles || it.roles.includes(efectivo))
+  if (!rol) return items.filter((it) => !it.roles)
+  return items.filter((it) => !it.roles || it.roles.includes(rol))
 }

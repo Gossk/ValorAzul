@@ -230,13 +230,14 @@ function Usuarios() {
         <div className="usuarios-alert error">{error}</div>
       )}
 
-      <div className="glass-card panel">
+      <div className="glass-card panel usuarios-table-panel">
         {loading ? (
           <p style={{ color: 'rgba(255,255,255,0.6)', padding: 40, textAlign: 'center' }}>
             <Loader2 size={16} className="spin" style={{ marginRight: 6, verticalAlign: 'middle' }} />
             Cargando usuarios...
           </p>
         ) : (
+          <div className="responsive-table-wrap">
           <table className="usuarios-table">
             <thead>
               <tr>
@@ -332,6 +333,7 @@ function Usuarios() {
               )}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

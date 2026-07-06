@@ -115,6 +115,11 @@ function MisSimulaciones() {
     if (!confirm('¿Eliminar esta simulación? Esta acción no se puede deshacer.')) return
     try {
       await deleteDoc(doc(db, 'simulaciones', id))
+      try {
+        await deleteDoc(doc(db, 'historial', id))
+      } catch (mirrorErr) {
+        console.warn('No se pudo eliminar el espejo en historial:', mirrorErr)
+      }
       setItems((prev) => prev.filter((x) => x.id !== id))
     } catch (err) {
       console.error(err)

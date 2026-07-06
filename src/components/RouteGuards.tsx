@@ -56,7 +56,8 @@ export function RequireRole({
     )
   }
   if (!roles.includes(perfil.rol)) {
-    return <Navigate to="/inicio" replace />
+    const destino = perfil.rol === 'Administrador' ? '/dashboard' : '/inicio'
+    return <Navigate to={destino} replace />
   }
   return <>{children}</>
 }

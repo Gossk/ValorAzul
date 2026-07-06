@@ -80,6 +80,7 @@ function Register() {
         nombre: form.nombre,
         email: form.email,
         rol: 'Cliente',
+        activo: true,
         fechaRegistro: new Date().toLocaleDateString('es-PE'),
       })
 

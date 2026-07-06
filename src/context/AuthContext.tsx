@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db } from '../firebaseConfig'
 
 /**
@@ -110,6 +110,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsub()
   }, [])
 
+  // ── Heartbeat de conexión ──
+  // Marcamos al usuario como "en línea" mientras el navegador esté abierto
+  // (ping cada 45 s + ping al cerrar/refrescar la pestaña). El estado
+  // `Conectado` se calcula en el cliente comparando `ultimaConexion` con
+  // el reloj: si el ping tiene < ~90 s → Conectado.
+  useEffect(() => {
+    if (!user?.uid) return
+
+    const ping = async (offline: boolean = false) => {
+      try {
+        await setDoc(
+          doc(db, 'usuarios', user.uid),
+          {
+            ultimaConexion:       serverTimestamp(),
+            ultimaConexionMs:     Date.now(),
+            online:               !offline,
+          },
+          { merge: true },
+        )
+      } catch (err) {
+        console.warn('[heartbeat]', err)
+      }
+    }
+
+    ping()
+    const interval = window.setInterval(() => ping(false), 45_000)
+
+    const onLeave = () => { ping(true) }
+    window.addEventListener('beforeunload', onLeave)
+    window.addEventListener('pagehide', onLeave)
+
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('beforeunload', onLeave)
+      window.removeEventListener('pagehide', onLeave)
+      // No forzamos offline aquí porque el efecto se limpia también
+      // al cambiar de página; solo lo hacemos al cerrar el tab.
+    }
+  }, [user?.uid])
+
   const refreshPerfil = async () => {
     if (!user) return
     const p = await cargarPerfil(user)
@@ -117,6 +157,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
+    // Marcamos offline antes de cerrar la sesión
+    if (user?.uid) {
+      try {
+        await setDoc(
+          doc(db, 'usuarios', user.uid),
+          { online: false, ultimaConexion: serverTimestamp(), ultimaConexionMs: Date.now() },
+          { merge: true },
+        )
+      } catch {}
+    }
     await signOut(auth)
     setUser(null)
     setPerfil(null)

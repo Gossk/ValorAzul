@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 import Layout from './components/Layout'
-import { AuthProvider } from './context/AuthContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import { RequireAuth, RequireRole } from './components/RouteGuards'
 
 import Login from './pages/Login'
@@ -15,28 +15,41 @@ import Simulador from './pages/Simulador'
 import Historial from './pages/Historial'
 import Ayuda from './pages/Ayuda'
 import Usuarios from './pages/Usuarios'
-import Configuracion from './pages/Configuracion'
 import MisSimulaciones from './pages/MisSimulaciones'
 import Perfil from './pages/Perfil'
 
 import './index.css'
+
+/**
+ * Redirige al "home" apropiado según el rol.
+ *   Admin   → /dashboard
+ *   Cliente → /inicio
+ * Se usa como fallback de rutas desconocidas y del catch-all.
+ */
+function HomeRedirect() {
+  const { perfil, loading, user } = useAuth()
+  if (loading) return null
+  if (!user) return <Navigate to="/login" replace />
+  return <Navigate to={perfil?.rol === 'Administrador' ? '/dashboard' : '/inicio'} replace />
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<HomeRedirect />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Simulador tiene su propio layout interno — va fuera del wrapper.
-              Sigue requiriendo sesión (Cliente o Administrador). */}
+          {/* Simulador tiene su propio layout interno — va fuera del wrapper. */}
           <Route
             path="/simulador"
             element={
               <RequireAuth>
-                <Simulador />
+                <RequireRole roles={['Cliente', 'Administrador']}>
+                  <Simulador />
+                </RequireRole>
               </RequireAuth>
             }
           />
@@ -49,22 +62,36 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               </RequireAuth>
             }
           >
-            {/* Accesibles para Cliente y Administrador */}
-            <Route path="/inicio" element={<Inicio />} />
-            <Route path="/ayuda"  element={<Ayuda />} />
+            {/* Mi Perfil → accesible para Cliente y Administrador */}
             <Route path="/perfil" element={<Perfil />} />
 
-            {/* Solo Cliente (los admins tienen su propio Historial) */}
+            {/* Sólo Cliente */}
+            <Route
+              path="/inicio"
+              element={
+                <RequireRole roles={['Cliente']}>
+                  <Inicio />
+                </RequireRole>
+              }
+            />
             <Route
               path="/mis-simulaciones"
               element={
-                <RequireRole roles={['Cliente', 'Administrador']}>
+                <RequireRole roles={['Cliente']}>
                   <MisSimulaciones />
                 </RequireRole>
               }
             />
+            <Route
+              path="/ayuda"
+              element={
+                <RequireRole roles={['Cliente']}>
+                  <Ayuda />
+                </RequireRole>
+              }
+            />
 
-            {/* Rutas restringidas a Administrador */}
+            {/* Sólo Administrador */}
             <Route
               path="/dashboard"
               element={
@@ -97,18 +124,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 </RequireRole>
               }
             />
-            <Route
-              path="/configuracion"
-              element={
-                <RequireRole roles={['Administrador']}>
-                  <Configuracion />
-                </RequireRole>
-              }
-            />
           </Route>
 
-          {/* Cualquier ruta desconocida → /inicio */}
-          <Route path="*" element={<Navigate to="/inicio" replace />} />
+          {/* Cualquier ruta desconocida → home según rol */}
+          <Route path="*" element={<HomeRedirect />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

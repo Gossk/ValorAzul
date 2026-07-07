@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../firebaseConfig'
 import { ShieldCheck } from 'lucide-react'
+import SimpleCaptcha from '../components/SimpleCaptcha'
 import './Login.css'
 
 /**
@@ -56,6 +57,8 @@ function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [captchaVerified, setCaptchaVerified] = useState(false)
+  const [captchaKey, setCaptchaKey] = useState(0)
 
   // Función de login con Firebase
   const handleLogin = async () => {
@@ -66,6 +69,11 @@ function Login() {
       return
     }
 
+    if (!captchaVerified) {
+      setError('Por favor, resuelva la verificación de seguridad (captcha).')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -73,6 +81,10 @@ function Login() {
       const destino = await resolverRolYRedirigir(cred.user.uid)
       navigate(destino)
     } catch (err: any) {
+      // Reiniciar el captcha por seguridad tras un intento fallido
+      setCaptchaVerified(false)
+      setCaptchaKey((prev) => prev + 1)
+
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         setError('Correo o contraseña incorrectos.')
       } else if (err.code === 'auth/wrong-password') {
@@ -256,6 +268,16 @@ function Login() {
             onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
           />
         </div>
+
+        <SimpleCaptcha
+          key={captchaKey}
+          onVerify={(verified) => {
+            setCaptchaVerified(verified)
+            if (verified && error === 'Por favor, resuelva la verificación de seguridad (captcha).') {
+              setError('')
+            }
+          }}
+        />
 
         <button
           className="login-button"

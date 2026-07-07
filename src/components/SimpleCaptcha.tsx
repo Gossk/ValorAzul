@@ -9,13 +9,13 @@ interface Props {
 interface CaptchaChallenge {
   a: number
   b: number
-  op: '+' | '−' | '×'
+  op: '+' | '-' | '×'
   answer: number
 }
 
 /* ───────── helpers ───────── */
 function generateChallenge(): CaptchaChallenge {
-  const ops: Array<'+' | '−' | '×'> = ['+', '−', '×']
+  const ops: Array<'+' | '-' | '×'> = ['+', '-', '×']
   const op = ops[Math.floor(Math.random() * ops.length)]
   let a = 0, b = 0, answer = 0
 
@@ -25,7 +25,7 @@ function generateChallenge(): CaptchaChallenge {
       b = Math.floor(Math.random() * 20) + 1
       answer = a + b
       break
-    case '−':
+    case '-':
       a = Math.floor(Math.random() * 20) + 10
       b = Math.floor(Math.random() * 10) + 1
       answer = a - b
@@ -120,7 +120,11 @@ function SimpleCaptcha({ onVerify }: Props) {
   const [challenge, setChallenge] = useState<CaptchaChallenge>(() => generateChallenge())
   const [input, setInput] = useState('')
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
-  const [attempts, setAttempts] = useState(0)
+
+  const onVerifyRef = useRef(onVerify)
+  useEffect(() => {
+    onVerifyRef.current = onVerify
+  }, [onVerify])
 
   /* Dibujar el canvas cuando cambia challenge o al montar */
   useEffect(() => {
@@ -135,8 +139,10 @@ function SimpleCaptcha({ onVerify }: Props) {
     setChallenge(generateChallenge())
     setInput('')
     setStatus('idle')
-    onVerify(false)
-  }, [onVerify])
+    if (onVerifyRef.current) {
+      onVerifyRef.current(false)
+    }
+  }, [])
 
   /* Verificar respuesta */
   const handleCheck = () => {
@@ -145,18 +151,20 @@ function SimpleCaptcha({ onVerify }: Props) {
 
     if (val === challenge.answer) {
       setStatus('success')
-      onVerify(true)
+      if (onVerifyRef.current) onVerifyRef.current(true)
     } else {
       setStatus('error')
-      onVerify(false)
-      setAttempts((prev) => prev + 1)
+      if (onVerifyRef.current) onVerifyRef.current(false)
       // Generar nuevo captcha tras error
       setTimeout(() => refresh(), 800)
     }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleCheck()
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleCheck()
+    }
   }
 
   return (
@@ -194,8 +202,18 @@ function SimpleCaptcha({ onVerify }: Props) {
           placeholder="Resuelve la operación"
           value={input}
           onChange={(e) => {
-            setInput(e.target.value.replace(/\D/g, ''))
+            const cleanVal = e.target.value.replace(/\D/g, '')
+            setInput(cleanVal)
             if (status === 'error') setStatus('idle')
+
+            const numVal = parseInt(cleanVal, 10)
+            if (!isNaN(numVal) && numVal === challenge.answer) {
+              setStatus('success')
+              if (onVerifyRef.current) onVerifyRef.current(true)
+            } else if (status === 'success') {
+              setStatus('idle')
+              if (onVerifyRef.current) onVerifyRef.current(false)
+            }
           }}
           onKeyDown={handleKeyDown}
           disabled={status === 'success'}

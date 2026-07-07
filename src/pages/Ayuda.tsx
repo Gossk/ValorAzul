@@ -128,7 +128,23 @@ function Ayuda() {
       showToast({
         type: 'error',
         title: 'Faltan datos',
-        message: 'Completa el asunto y la descripción de tu reclamo.',
+        message: 'Por favor, completa todos los campos del reclamo antes de enviar.',
+      })
+      return
+    }
+    if (reclamo.asunto.trim().length < 4) {
+      showToast({
+        type: 'error',
+        title: 'Asunto muy corto',
+        message: 'El asunto debe tener al menos 4 caracteres.',
+      })
+      return
+    }
+    if (reclamo.descripcion.trim().length < 10) {
+      showToast({
+        type: 'error',
+        title: 'Descripción incompleta',
+        message: 'Por favor, detalla tu reclamo con al menos 10 caracteres.',
       })
       return
     }
@@ -150,8 +166,8 @@ function Ayuda() {
       setReclamo({ tipo: 'Reclamo', asunto: '', descripcion: '' })
       showToast({
         type: 'success',
-        title: 'Reclamo registrado',
-        message: 'Hemos recibido tu reclamo. Te contactaremos pronto.',
+        title: 'Enviado correctamente',
+        message: 'Hemos recibido tu reclamo en el Libro de reclamaciones. Te contactaremos pronto.',
       })
     } catch (err: any) {
       console.error(err)
@@ -272,8 +288,9 @@ function Ayuda() {
           <form className="reclamos-form" onSubmit={enviarReclamo}>
             <div className="reclamos-row">
               <label className="reclamos-tipo">
-                <span>Tipo</span>
+                <span>Tipo <strong style={{ color: '#f87171' }}>*</strong></span>
                 <select
+                  required
                   value={reclamo.tipo}
                   onChange={(e) => setReclamo({ ...reclamo, tipo: e.target.value })}
                 >
@@ -282,28 +299,37 @@ function Ayuda() {
                 </select>
               </label>
               <label className="reclamos-asunto">
-                <span>Asunto</span>
+                <span>Asunto <strong style={{ color: '#f87171' }}>*</strong></span>
                 <input
                   type="text"
+                  required
+                  minLength={4}
                   value={reclamo.asunto}
                   onChange={(e) => setReclamo({ ...reclamo, asunto: e.target.value })}
-                  placeholder="Ej: Error al simular"
+                  placeholder="Ej: Error al simular (mín. 4 caracteres)"
                   maxLength={80}
                 />
               </label>
             </div>
             <label>
-              <span>Descripción</span>
+              <span>Descripción <strong style={{ color: '#f87171' }}>*</strong></span>
               <textarea
                 rows={3}
+                required
+                minLength={10}
                 value={reclamo.descripcion}
                 onChange={(e) => setReclamo({ ...reclamo, descripcion: e.target.value })}
-                placeholder="Cuéntanos qué ocurrió..."
+                placeholder="Cuéntanos qué ocurrió detalladamente (mín. 10 caracteres)..."
                 maxLength={600}
               />
             </label>
             <div className="reclamos-actions">
-              <button type="submit" className="btn btn-primary" disabled={enviando}>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={enviando || !reclamo.asunto.trim() || !reclamo.descripcion.trim()}
+                style={{ opacity: (!reclamo.asunto.trim() || !reclamo.descripcion.trim()) ? 0.6 : 1 }}
+              >
                 {enviando ? 'Enviando…' : 'Enviar reclamo'}
               </button>
             </div>

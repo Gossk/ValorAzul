@@ -122,6 +122,17 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // -------------- reclamaciones/{docId} --------------
+    // Libro de reclamaciones (Clientes y Admins):
+    // - Cualquier usuario autenticado puede CREAR un reclamo o queja.
+    // - Los clientes pueden LEER solo sus propios registros.
+    // - Los admins pueden leer, actualizar y eliminar TODO.
+    match /reclamaciones/{docId} {
+      allow create: if isSignedIn();
+      allow read:   if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
     // Cualquier otra ruta → denegada por defecto.
     match /{document=**} {
       allow read, write: if false;

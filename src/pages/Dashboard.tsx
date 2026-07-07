@@ -59,8 +59,22 @@ const fmtDecimal = (n: number) => n.toLocaleString('es-PE', {
   maximumFractionDigits: 2,
 })
 
+interface Reclamo {
+  id: string
+  uid?: string
+  nombre: string
+  email: string
+  tipo: string
+  asunto: string
+  descripcion: string
+  estado: string
+  fecha: string
+  creadoEn?: number
+}
+
 function Dashboard() {
   const [historial, setHistorial]     = useState<Simulacion[]>([])
+  const [reclamos, setReclamos]       = useState<Reclamo[]>([])
   const [totalClientesRegistrados, setTotalClientesRegistrados] = useState(0)
   const [loading, setLoading]         = useState(true)
   const [refreshedAt, setRefreshedAt] = useState<Date>(new Date())
@@ -113,7 +127,32 @@ function Dashboard() {
       (err) => console.warn('[Dashboard] usuarios:', err),
     )
 
-    return () => { unsub1(); unsub2() }
+    const unsub3 = onSnapshot(
+      collection(db, 'reclamaciones'),
+      (snap) => {
+        const lista: Reclamo[] = []
+        snap.forEach((d) => {
+          const data = d.data() as any
+          lista.push({
+            id: d.id,
+            uid: data.uid,
+            nombre: data.nombre || 'Cliente',
+            email: data.email || '',
+            tipo: data.tipo || 'Reclamo',
+            asunto: data.asunto || '',
+            descripcion: data.descripcion || '',
+            estado: data.estado || 'Pendiente',
+            fecha: data.fecha || '',
+            creadoEn: Number(data.creadoEn) || 0,
+          })
+        })
+        lista.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0))
+        setReclamos(lista)
+      },
+      (err) => console.warn('[Dashboard] reclamaciones:', err),
+    )
+
+    return () => { unsub1(); unsub2(); unsub3() }
   }, [])
 
   // ─── Derivados ───
@@ -205,7 +244,7 @@ function Dashboard() {
           <div>
             <p>Clientes con simulaciones</p>
             <h2>{stats.clientesUnicos}</h2>
-            <span>De {totalClientesRegistrados} clientes registrados</span>
+            <span>En los últimos días hubieron {totalClientesRegistrados} clientes registrados</span>
           </div>
         </div>
         <div className="glass-card stat-card">
@@ -256,6 +295,39 @@ function Dashboard() {
                   <Line yAxisId="money" type="monotone" dataKey="ticketPromedio" stroke="#22c55e" strokeWidth={2} dot={false} strokeDasharray="5 5" />
                 </ComposedChart>
               </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Libro de reclamaciones (Clientes) */}
+        <div className="glass-card panel reclamos-panel-dash">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <h3 style={{ margin: 0 }}>Libro de reclamaciones</h3>
+            <span className="badge badge-purple">{reclamos.length}</span>
+          </div>
+          <p className="panel-subtitle">Reclamos y quejas reportadas por los clientes.</p>
+          <div className="reclamos-list-dash">
+            {reclamos.length === 0 ? (
+              <div className="reclamos-empty">
+                <p>No hay reclamos registrados.</p>
+              </div>
+            ) : (
+              reclamos.map((r) => (
+                <div key={r.id} className="reclamo-item-dash">
+                  <div className="reclamo-head-dash">
+                    <span className={`badge ${r.tipo === 'Queja' ? 'badge-red' : 'badge-purple'}`}>
+                      {r.tipo}
+                    </span>
+                    <span className="reclamo-fecha-dash">{r.fecha}</span>
+                  </div>
+                  <h4 className="reclamo-asunto-dash">{r.asunto}</h4>
+                  <p className="reclamo-desc-dash">{r.descripcion}</p>
+                  <div className="reclamo-autor-dash">
+                    <strong>{r.nombre}</strong>
+                    {r.email && <span>({r.email})</span>}
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>

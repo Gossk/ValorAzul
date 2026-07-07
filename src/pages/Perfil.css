@@ -1,4 +1,3 @@
-/* src/pages/Perfil.css */
 
 .perf-wrapper {
   display: flex;
@@ -138,6 +137,28 @@
 }
 .perf-save:disabled { opacity: 0.6; cursor: not-allowed; }
 
+.perf-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 11px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+.perf-logout:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.5);
+  transform: translateY(-1px);
+}
+
 @media (max-width: 640px) {
   .perf-grid { grid-template-columns: 1fr; }
+  .perf-actions { flex-direction: column-reverse; gap: 10px; }
+  .perf-actions button { width: 100%; justify-content: center; }
 }

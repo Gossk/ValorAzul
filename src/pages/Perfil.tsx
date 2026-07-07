@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { Mail, Phone, Save, ShieldCheck, User } from 'lucide-react'
+import { LogOut, Mail, Phone, Save, ShieldCheck, User } from 'lucide-react'
 import { db } from '../firebaseConfig'
 import { useAuth } from '../context/AuthContext'
 import './Perfil.css'
@@ -17,7 +17,7 @@ interface DatosCliente {
 }
 
 function Perfil() {
-  const { perfil, user } = useAuth()
+  const { perfil, user, logout } = useAuth()
 
   const [datos, setDatos] = useState<DatosCliente>({
     nombre: '',
@@ -151,6 +151,9 @@ function Perfil() {
         </div>
 
         <div className="perf-actions">
+          <button type="button" className="perf-logout" onClick={() => logout()}>
+            <LogOut size={16} /> Cerrar sesión
+          </button>
           <button className="perf-save" onClick={guardar} disabled={saving}>
             <Save size={16} /> {saving ? 'Guardando…' : 'Guardar cambios'}
           </button>

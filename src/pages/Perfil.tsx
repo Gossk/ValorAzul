@@ -1,4 +1,4 @@
-// src/pages/Perfil.tsx
+
 import { useEffect, useState } from 'react'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { Mail, Phone, Save, ShieldCheck, User } from 'lucide-react'

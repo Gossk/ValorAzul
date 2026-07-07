@@ -1,8 +1,3 @@
-// src/pages/Ayuda.tsx
-// Centro de ayuda para CLIENTES.
-// - FAQs ampliadas y orientadas 100% al cliente (cómo usar la app).
-// - Libro de reclamaciones funcional (guarda en Firestore).
-// - Se eliminó el bloque de "chat en vivo" (fuera de alcance).
 import { useMemo, useState } from 'react'
 import {
   BookOpen,

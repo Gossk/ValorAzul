@@ -1,7 +1,3 @@
-// src/pages/Historial.tsx
-//
-// Historial del ADMINISTRADOR: SOLO simulaciones REALES que los clientes
-// guardaron desde el simulador. Sin seeds ni datos ficticios.
 
 import { useEffect, useMemo, useState } from 'react'
 import { CircleDollarSign, ClipboardList, Download, XCircle } from 'lucide-react'

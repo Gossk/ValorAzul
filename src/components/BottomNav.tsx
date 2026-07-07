@@ -1,10 +1,4 @@
-// src/components/BottomNav.tsx
-//
-// Barra de navegación inferior para móvil.
-//
-// Reemplaza el ícono de "hamburguesa" que antes estaba en el topbar: en
-// pantallas pequeñas el menú lateral se oculta y estas pestañas permiten
-// navegar de forma intuitiva sin recargar la pantalla.
+
 import { Link, useLocation } from 'react-router-dom'
 
 import type { NavItem } from './navConfig'

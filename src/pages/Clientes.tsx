@@ -1,15 +1,3 @@
-// src/pages/Clientes.tsx
-//
-// Vista del ADMINISTRADOR con los CLIENTES reales del sistema.
-// No hay creación / edición / eliminación: eso vive en "Usuarios".
-// Aquí sólo se muestra:
-//   • Nombre / email / fecha de registro.
-//   • Estado en tiempo real: Conectado / Desconectado + "última conexión".
-//   • Nº de simulaciones que ha guardado cada cliente.
-//
-// El estado Conectado se calcula comparando `ultimaConexion` del documento
-// `usuarios/{uid}` con el reloj actual: si el ping tiene < 90 s → online.
-
 import { useEffect, useMemo, useState } from 'react'
 import { Search, Wifi, WifiOff } from 'lucide-react'
 import { collection, onSnapshot, query, where } from 'firebase/firestore'

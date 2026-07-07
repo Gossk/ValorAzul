@@ -1,4 +1,4 @@
-// src/components/RouteGuards.tsx
+
 import { Navigate, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useAuth, type Rol } from '../context/AuthContext'

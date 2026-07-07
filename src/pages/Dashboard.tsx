@@ -1,17 +1,3 @@
-// src/pages/Dashboard.tsx
-//
-// Dashboard del ADMINISTRADOR.
-// Todos los datos vienen de Firestore en tiempo real:
-//   - historial/    → cada simulación guardada por un cliente.
-//   - usuarios/     → los usuarios registrados (clientes + admins).
-//
-// Métricas mostradas:
-//   • KPIs: total de simulaciones, clientes con simulaciones, monto financiado,
-//           cuota promedio, TCEA promedio.
-//   • Gráfico de área: simulaciones por mes.
-//   • Gráfico barras: top vehículos simulados.
-//   • Tabla: últimas 8 simulaciones.
-
 import { useEffect, useMemo, useState } from 'react'
 import {
   Calendar,

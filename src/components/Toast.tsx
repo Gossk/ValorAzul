@@ -1,11 +1,4 @@
-// src/components/Toast.tsx
-//
-// Sistema de notificaciones tipo "toast" global.
-//
-// Se usa para reemplazar el ícono de campana del topbar: ahora las
-// notificaciones solo aparecen en momentos relevantes (p. ej. cuando un
-// cliente guarda una simulación) e indican dónde quedó guardada
-// (por ejemplo, "Mis Simulaciones").
+
 import {
   createContext,
   useCallback,

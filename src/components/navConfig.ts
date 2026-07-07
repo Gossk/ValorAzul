@@ -1,18 +1,3 @@
-// src/components/navConfig.ts
-//
-// Configuración ÚNICA de la navegación de la app.
-// Se consume desde:
-//   - src/components/Layout.tsx   (sidebar general con Outlet)
-//   - src/pages/Simulador.tsx     (sidebar interno del simulador)
-//
-// De esta forma el usuario ve exactamente los mismos items en cualquier
-// pantalla y no aparecen/desaparecen al navegar.
-//
-// Reglas por rol:
-//   Cliente        → Inicio · Simulador · Mis Simulaciones · Ayuda · Mi Perfil
-//   Administrador  → Dashboard · Clientes · Historial · Usuarios · Mi Perfil
-//
-// Si `roles` no está definido, el item es visible para todos.
 
 import {
   Car,

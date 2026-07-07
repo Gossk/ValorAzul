@@ -1,9 +1,9 @@
-
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { auth, db } from '../firebaseConfig'
+import TerminosModal from '../components/TerminosModal'
 import './Login.css'
 
 /* ───────── tipos ───────── */
@@ -58,6 +58,7 @@ function Register() {
     confirmPassword: '',
   })
   const [aceptaTerminos, setAceptaTerminos] = useState(false)
+  const [showTerminos, setShowTerminos] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
@@ -416,9 +417,21 @@ function Register() {
             onChange={(e) => setAceptaTerminos(e.target.checked)}
           />
           <span>
-            Acepto los términos y condiciones sobre el uso de mis datos. Entiendo que la información ingresada y las simulaciones generadas son datos experimentales, usados únicamente con fines académicos para este proyecto universitario, y no serán utilizados para otros fines.
+            Acepto los{' '}
+            <span
+              className="terms-link"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTerminos(true) }}
+            >
+              términos y condiciones
+            </span>{' '}
+            sobre el uso de mis datos. Entiendo que la información ingresada y las simulaciones
+            generadas son datos experimentales, usados únicamente con fines académicos para este
+            proyecto universitario, y no serán utilizados para otros fines.
           </span>
         </label>
+
+        {/* Modal de Términos y Condiciones */}
+        <TerminosModal open={showTerminos} onClose={() => setShowTerminos(false)} />
 
         <button
           className="login-button"

@@ -2,14 +2,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Bell,
+  ArrowRight,
   Calculator,
   Car,
-  CheckCircle2,
   FileText,
-  HelpCircle,
+  Gauge,
+  Lightbulb,
+  ShieldCheck,
   Sparkles,
-  UserCircle,
+  TrendingUp,
 } from 'lucide-react'
 import {
   collection,
@@ -23,31 +24,71 @@ import { db } from '../firebaseConfig'
 import { useAuth } from '../context/AuthContext'
 import './Inicio.css'
 
-interface Aviso {
-  icon: typeof Bell
-  titulo: string
-  detalle: string
-  tono: 'info' | 'ok' | 'warn'
-}
-
-const AVISOS_DEFAULT: Aviso[] = [
+const TIPS = [
   {
-    icon: Sparkles,
-    titulo: '¡Bienvenido a Valor Azul!',
-    detalle: 'Ya puedes simular tu crédito vehicular en pocos pasos.',
-    tono: 'info',
+    icon: Lightbulb,
+    titulo: 'Cuota inicial mayor, intereses menores',
+    detalle:
+      'Subir la cuota inicial por encima del 20% puede reducir de forma notable lo que pagas de intereses.',
+    tono: 'info' as const,
   },
   {
-    icon: CheckCircle2,
+    icon: ShieldCheck,
     titulo: 'Tus datos están seguros',
-    detalle: 'Toda la información viaja encriptada y se almacena de forma privada.',
-    tono: 'ok',
+    detalle:
+      'Toda tu información viaja encriptada y se guarda de forma privada en tu cuenta.',
+    tono: 'ok' as const,
   },
   {
-    icon: Bell,
-    titulo: 'Tip financiero',
-    detalle: 'Una cuota inicial mayor al 20% reduce significativamente los intereses.',
-    tono: 'warn',
+    icon: TrendingUp,
+    titulo: 'Compara antes de decidir',
+    detalle:
+      'Prueba distintos plazos y tasas: cada simulación se guarda para que la revises cuando quieras.',
+    tono: 'warn' as const,
+  },
+]
+
+const PASOS = [
+  {
+    n: 1,
+    icon: Car,
+    title: 'Elige tu vehículo',
+    desc: 'Busca tu modelo y fija el precio. Toyota, Hyundai, Kia, Mazda y muchas marcas más disponibles.',
+  },
+  {
+    n: 2,
+    icon: Calculator,
+    title: 'Simula tu crédito',
+    desc: 'Ingresa cuota inicial, plazo y tasa. Obtén al instante tu cuota mensual, TCEA y cronograma completo.',
+  },
+  {
+    n: 3,
+    icon: FileText,
+    title: 'Guarda y revisa',
+    desc: 'Tu simulación se guarda en "Mis Simulaciones". Vuelve cuando quieras para comparar o retomarla.',
+  },
+]
+
+const FEATURES = [
+  {
+    icon: Calculator,
+    title: 'Simulador inteligente',
+    desc: 'Calcula cuota, TCEA, TEM y cronograma de pagos en segundos, con o sin período de gracia.',
+  },
+  {
+    icon: FileText,
+    title: 'Mis Simulaciones',
+    desc: 'Tu historial personal de simulaciones, guardado y organizado para comparar escenarios.',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Compara escenarios',
+    desc: 'Prueba plazos, monedas y tasas distintas para encontrar el plan que mejor se ajuste a tu bolsillo.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Claro y transparente',
+    desc: 'Entiende cada número: intereses, seguros y costos, sin letra pequeña que esconder.',
   },
 ]
 
@@ -93,37 +134,65 @@ function Inicio() {
       }
     }
     cargar()
-    return () => { cancel = true }
+    return () => {
+      cancel = true
+    }
   }, [perfil?.uid])
 
   const primerNombre = perfil?.nombre?.split(' ')[0] ?? ''
 
   return (
     <div className="inicio-wrapper">
-      <div className="inicio-hero">
+      {/* ---------- HERO ---------- */}
+      <section className="inicio-hero">
+        <div className="inicio-hero-glow" aria-hidden="true" />
+        <div className="inicio-hero-spark inicio-hero-spark-1" aria-hidden="true" />
+        <div className="inicio-hero-spark inicio-hero-spark-2" aria-hidden="true" />
+
         <span className="inicio-badge">
           <Sparkles size={14} /> Bienvenido a Valor Azul
         </span>
+
         <h1 className="inicio-title">
-          ¡Hola{primerNombre ? `, ${primerNombre}` : ''}!
+          {primerNombre ? `¡Hola, ${primerNombre}! ` : '¡Hola! '}
+          <span className="inicio-title-accent">
+            Descubre cuánto cuesta tu auto soñado.
+          </span>
         </h1>
+
         <p className="inicio-subtitle">
-          Simula tu crédito vehicular en minutos, revisa el cronograma completo
-          y encuentra el plan que mejor se adapte a ti. Todo en un solo lugar.
+          Valor Azul es tu simulador de crédito vehicular. En minutos conoces tu
+          cuota mensual, la TCEA y el cronograma completo de pagos — y guardas
+          cada simulación para comparar cuando quieras.
         </p>
 
         <div className="inicio-actions">
           <button className="inicio-primary" onClick={() => navigate('/simulador')}>
-            <Calculator size={18} /> Nueva simulación
+            <Calculator size={18} /> Simular mi crédito
           </button>
-          <button className="inicio-secondary" onClick={() => navigate('/mis-simulaciones')}>
+          <button
+            className="inicio-secondary"
+            onClick={() => navigate('/mis-simulaciones')}
+          >
             <FileText size={18} /> Ver mis simulaciones
+            <ArrowRight size={15} />
           </button>
         </div>
-      </div>
 
-      {/* Resumen rápido */}
-      <div className="inicio-stats">
+        {/* Escena animada: un auto recorriendo la ruta hacia tu auto */}
+        <div className="inicio-road" aria-hidden="true">
+          <div className="inicio-road-line" />
+          <span className="inicio-road-dot d1" />
+          <span className="inicio-road-dot d2" />
+          <span className="inicio-road-dot d3" />
+          <div className="inicio-road-car">
+            <Car size={22} />
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- ESTADÍSTICAS PERSONALIZADAS ---------- */}
+      <section className="inicio-stats">
         <div className="inicio-stat">
           <span className="inicio-stat-label">Simulaciones realizadas</span>
           <strong className="inicio-stat-value">
@@ -135,55 +204,71 @@ function Inicio() {
           <strong className="inicio-stat-value inicio-stat-small">{ultimaFecha}</strong>
         </div>
         <div className="inicio-stat">
-          <span className="inicio-stat-label">Perfil</span>
-          <strong className="inicio-stat-value inicio-stat-small">{perfil?.rol ?? 'Cliente'}</strong>
-        </div>
-      </div>
-
-      {/* Accesos rápidos */}
-      <section className="inicio-section">
-        <h2 className="inicio-section-title">Accesos rápidos</h2>
-        <div className="inicio-quick">
-          <QuickCard
-            icon={<Car size={22} />}
-            title="Simulador"
-            desc="Calcula cuota, TCEA y cronograma de tu crédito vehicular."
-            onClick={() => navigate('/simulador')}
-            color="blue"
-          />
-          <QuickCard
-            icon={<FileText size={22} />}
-            title="Mis simulaciones"
-            desc="Revisa el historial de tus simulaciones anteriores."
-            onClick={() => navigate('/mis-simulaciones')}
-            color="green"
-          />
-          <QuickCard
-            icon={<HelpCircle size={22} />}
-            title="Ayuda (FAQ)"
-            desc="Resuelve dudas sobre créditos, tasas y conceptos financieros."
-            onClick={() => navigate('/ayuda')}
-            color="purple"
-          />
-          <QuickCard
-            icon={<UserCircle size={22} />}
-            title="Mi perfil"
-            desc="Actualiza tus datos personales y de contacto."
-            onClick={() => navigate('/perfil')}
-            color="orange"
-          />
+          <span className="inicio-stat-label">Tu perfil</span>
+          <strong className="inicio-stat-value inicio-stat-small">
+            {perfil?.rol ?? 'Cliente'}
+          </strong>
         </div>
       </section>
 
-      {/* Novedades / Avisos */}
+      {/* ---------- CÓMO FUNCIONA (3 PASOS) ---------- */}
       <section className="inicio-section">
-        <h2 className="inicio-section-title">Novedades y avisos</h2>
+        <h2 className="inicio-section-title">Así de fácil es empezar</h2>
+        <div className="inicio-steps">
+          {PASOS.map((p, i) => {
+            const Icon = p.icon
+            return (
+              <div className="inicio-step" key={p.n}>
+                <div className="inicio-step-num">{p.n}</div>
+                <div className="inicio-step-icon">
+                  <Icon size={22} />
+                </div>
+                <h3>{p.title}</h3>
+                <p>{p.desc}</p>
+                {i < PASOS.length - 1 && (
+                  <div className="inicio-step-arrow" aria-hidden="true">
+                    <ArrowRight size={18} />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* ---------- ¿DE QUÉ TRATA VALOR AZUL? (FEATURES) ---------- */}
+      <section className="inicio-section">
+        <h2 className="inicio-section-title">¿De qué trata Valor Azul?</h2>
+        <div className="inicio-features">
+          {FEATURES.map((f) => {
+            const Icon = f.icon
+            return (
+              <div className="inicio-feature" key={f.title}>
+                <div className="inicio-feature-icon">
+                  <Icon size={22} />
+                </div>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* ---------- TIPS ---------- */}
+      <section className="inicio-section">
+        <h2 className="inicio-section-title">
+          <Lightbulb size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />
+          Tip financiero
+        </h2>
         <div className="inicio-avisos">
-          {AVISOS_DEFAULT.map((a, i) => {
+          {TIPS.map((a, i) => {
             const Icon = a.icon
             return (
               <div key={i} className={`inicio-aviso tono-${a.tono}`}>
-                <div className="inicio-aviso-icon"><Icon size={18} /></div>
+                <div className="inicio-aviso-icon">
+                  <Icon size={18} />
+                </div>
                 <div>
                   <strong>{a.titulo}</strong>
                   <p>{a.detalle}</p>
@@ -193,31 +278,20 @@ function Inicio() {
           })}
         </div>
       </section>
-    </div>
-  )
-}
 
-function QuickCard({
-  icon,
-  title,
-  desc,
-  onClick,
-  color,
-}: {
-  icon: React.ReactNode
-  title: string
-  desc: string
-  onClick: () => void
-  color: 'blue' | 'green' | 'purple' | 'orange'
-}) {
-  return (
-    <button className={`inicio-quick-card qc-${color}`} onClick={onClick} type="button">
-      <div className="inicio-quick-icon">{icon}</div>
-      <div className="inicio-quick-text">
-        <strong>{title}</strong>
-        <span>{desc}</span>
-      </div>
-    </button>
+      {/* ---------- CTA FINAL ---------- */}
+      <section className="inicio-cta">
+        <div className="inicio-cta-text">
+          <h2>¿Listo para conocer tu cuota?</h2>
+          <p>
+            Simula tu crédito ahora y guarda el resultado en "Mis Simulaciones".
+          </p>
+        </div>
+        <button className="inicio-primary" onClick={() => navigate('/simulador')}>
+          <Gauge size={18} /> Empezar simulación
+        </button>
+      </section>
+    </div>
   )
 }
 

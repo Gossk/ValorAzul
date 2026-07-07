@@ -334,3 +334,98 @@ body,
     grid-column: auto;
   }
 }
+
+/* =====================================================
+   VALIDACIÓN DE FORMULARIO - REGISTER
+===================================================== */
+
+/* Mensaje de error debajo del input */
+.field-error {
+  display: block;
+  color: #f87171;
+  font-size: 12px;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* Input con error - borde rojo */
+.form-group input.input-error {
+  border-color: #f87171 !important;
+  background: rgba(248, 113, 113, 0.05);
+}
+
+.form-group input.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
+}
+
+/* Input válido - borde verde */
+.form-group input.input-ok {
+  border-color: #4ade80 !important;
+  background: rgba(74, 222, 128, 0.05);
+}
+
+.form-group input.input-ok:focus {
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
+}
+
+/* Contador de caracteres */
+.field-hint {
+  display: block;
+  text-align: right;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Indicador de fortaleza de contraseña */
+.strength-wrapper {
+  margin-top: 12px;
+}
+
+.strength-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.strength-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.strength-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.strength-checks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.strength-checks li {
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.check-ok {
+  color: #4ade80;
+}
+
+.check-fail {
+  color: #f87171;
+}

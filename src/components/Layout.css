@@ -367,55 +367,23 @@
 /* ---------- RESPONSIVE ---------- */
 
 @media (max-width: 1024px) {
+  /* En móvil el menú lateral se oculta y la navegación pasa a la
+     barra inferior (BottomNav). Ya no hay ícono de menú en el topbar. */
   .sidebar {
-    width: 280px;
-    transform: translateX(-100%);
-    transition: transform var(--transition), width var(--transition);
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
-  }
-
-  .sidebar.mobile-open {
-    transform: translateX(0);
-  }
-
-  .app-layout.sidebar-collapsed .sidebar {
-    width: 280px;
-    padding: 28px 18px;
+    display: none;
   }
 
   .app-layout.sidebar-collapsed .main {
     margin-left: 0;
   }
 
-  .sidebar-collapsed .logo-text,
-  .sidebar-collapsed .link-label,
-  .sidebar-collapsed .menu-title {
-    display: revert;
-  }
-
   .collapse-btn {
     display: none;
   }
 
-  .mobile-close {
-    display: flex;
-  }
-
-  .menu-toggle {
-    display: grid;
-  }
-
-  .sidebar-overlay {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(5, 10, 25, 0.6);
-    z-index: 9;
-  }
-
   .main {
     margin-left: 0;
-    padding: 18px 16px 40px;
+    padding: 18px 16px 92px;
   }
 
   .header h1 {

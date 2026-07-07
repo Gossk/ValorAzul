@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 import Layout from './components/Layout'
+import { ToastProvider } from './components/Toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { RequireAuth, RequireRole } from './components/RouteGuards'
 
@@ -37,6 +38,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
+        <ToastProvider>
         <Routes>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/login" element={<Login />} />
@@ -129,6 +131,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           {/* Cualquier ruta desconocida → home según rol */}
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

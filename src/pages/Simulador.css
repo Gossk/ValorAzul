@@ -304,34 +304,13 @@
 @media (max-width: 1024px) {
   .dashboard-layout .main {
     margin-left: 0;
-    padding: 18px 16px 40px;
+    padding: 18px 16px 92px;
   }
 
+  /* En móvil el menú lateral se oculta; la navegación queda en la
+     barra inferior (BottomNav). Ya no hay ícono de menú en el topbar. */
   .dashboard-layout .sidebar {
-    width: 280px;
-    transform: translateX(-100%);
-    transition: transform var(--transition), width var(--transition);
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
-  }
-
-  .dashboard-layout .sidebar.mobile-open {
-    transform: translateX(0);
-  }
-
-  .dashboard-layout .mobile-close {
-    display: flex;
-  }
-
-  .dashboard-layout .menu-toggle {
-    display: grid;
-  }
-
-  .dashboard-layout .sidebar-overlay {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(5, 10, 25, 0.6);
-    z-index: 9;
+    display: none;
   }
 }
 

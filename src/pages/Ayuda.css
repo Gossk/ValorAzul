@@ -233,3 +233,96 @@
     font-size: 22px;
   }
 }
+
+/* RECLAMOS (libro de reclamaciones) */
+
+.reclamos-panel {
+  padding: 26px;
+}
+
+.reclamos-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.reclamos-head h3 {
+  margin: 0 0 6px;
+}
+
+.reclamos-head p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.reclamos-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.reclamos-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.reclamos-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.reclamos-form label span {
+  font-weight: 500;
+}
+
+.reclamos-form input,
+.reclamos-form select,
+.reclamos-form textarea {
+  width: 100%;
+}
+
+.reclamos-form textarea {
+  resize: vertical;
+  min-height: 84px;
+  font-family: inherit;
+}
+
+.reclamos-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 14px;
+}
+
+.reclamos-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.reclamos-ok {
+  color: #4ade80;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .reclamos-row {
+    grid-template-columns: 1fr;
+  }
+}

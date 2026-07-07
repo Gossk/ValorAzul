@@ -6,10 +6,9 @@
 //   - usuarios/     → los usuarios registrados (clientes + admins).
 //
 // Métricas mostradas:
-//   • KPIs: total de simulaciones, clientes activos, monto financiado,
+//   • KPIs: total de simulaciones, clientes con simulaciones, monto financiado,
 //           cuota promedio, TCEA promedio.
 //   • Gráfico de área: simulaciones por mes.
-//   • Gráfico dona: distribución por estado (En evaluación / Aprobada / Rechazada).
 //   • Gráfico barras: top vehículos simulados.
 //   • Tabla: últimas 8 simulaciones.
 
@@ -135,9 +134,7 @@ function Dashboard() {
   const stats = useMemo(() => {
     const total       = historial.length
     const aprobados   = historial.filter((h) => h.estado === 'Aprobada').length
-    const rechazados  = historial.filter((h) => h.estado === 'Rechazada').length
     const enEval      = historial.filter((h) => h.estado === 'En evaluación').length
-    const guardados   = historial.filter((h) => h.estado === 'Guardada').length
     const clientesUnicos = new Set(historial.map((h) => h.uid || h.cliente)).size
     const montoTotal  = historial.reduce((acc, h) => acc + (h.monto || 0), 0)
     const cuotaProm   = total > 0
@@ -146,8 +143,7 @@ function Dashboard() {
     const tceaProm    = total > 0
       ? historial.reduce((a, h) => a + (h.tcea || 0), 0) / total
       : 0
-    const totalPagar  = historial.reduce((acc, h) => acc + (h.totalPagar || 0), 0)
-    return { total, aprobados, rechazados, enEval, guardados, clientesUnicos, montoTotal, cuotaProm, tceaProm, totalPagar }
+    return { total, aprobados, enEval, clientesUnicos, montoTotal, cuotaProm, tceaProm }
   }, [historial])
 
   const rendimientoPorMes = useMemo(() => {
@@ -169,15 +165,6 @@ function Dashboard() {
         cuotaPromedio: map[mes].simulaciones > 0 ? Math.round(map[mes].cuota / map[mes].simulaciones) : 0,
       }))
   }, [historial])
-
-  const gestion = useMemo(() => {
-    const evaluadas = stats.aprobados + stats.rechazados
-    const tasaAprobacion = evaluadas > 0 ? Math.round((stats.aprobados / evaluadas) * 100) : 0
-    const tasaRechazo = evaluadas > 0 ? Math.round((stats.rechazados / evaluadas) * 100) : 0
-    const pendientes = stats.enEval + stats.guardados
-    const avance = stats.total > 0 ? Math.round((evaluadas / stats.total) * 100) : 0
-    return { evaluadas, tasaAprobacion, tasaRechazo, pendientes, avance }
-  }, [stats])
 
   const topVehiculos = useMemo(() => {
     const map: Record<string, number> = {}
@@ -253,15 +240,7 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="dashboard-summary-row">
-        <div className="summary-pill"><strong>{stats.guardados}</strong><span>Guardadas</span></div>
-        <div className="summary-pill"><strong>{stats.enEval}</strong><span>En evaluación</span></div>
-        <div className="summary-pill"><strong>{stats.aprobados}</strong><span>Aprobadas</span></div>
-        <div className="summary-pill"><strong>{stats.rechazados}</strong><span>Rechazadas</span></div>
-        <div className="summary-pill wide"><strong>{fmtSoles(stats.totalPagar)}</strong><span>Total proyectado a pagar</span></div>
-      </div>
-
-      {/* Rendimiento mensual + gestión */}
+      {/* Rendimiento mensual */}
       <div className="middle-grid">
         <div className="glass-card panel">
           <h3>Rendimiento mensual de financiamiento</h3>
@@ -295,41 +274,6 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card panel gestion-panel">
-          <h3>Gestión de solicitudes</h3>
-          <p className="panel-subtitle">Prioriza pendientes y mide la efectividad de evaluación.</p>
-          <div className="gestion-grid">
-            <div className="gestion-card highlight">
-              <span>Pendientes por revisar</span>
-              <strong>{gestion.pendientes}</strong>
-              <small>{stats.enEval} en evaluación · {stats.guardados} guardadas</small>
-            </div>
-            <div className="gestion-card">
-              <span>Solicitudes evaluadas</span>
-              <strong>{gestion.evaluadas}</strong>
-              <small>{gestion.avance}% del total procesado</small>
-            </div>
-            <div className="gestion-card ok">
-              <span>Tasa de aprobación</span>
-              <strong>{gestion.tasaAprobacion}%</strong>
-              <small>{stats.aprobados} aprobadas</small>
-            </div>
-            <div className="gestion-card danger">
-              <span>Tasa de rechazo</span>
-              <strong>{gestion.tasaRechazo}%</strong>
-              <small>{stats.rechazados} rechazadas</small>
-            </div>
-          </div>
-          <div className="gestion-progress">
-            <div className="gestion-progress-label">
-              <span>Avance de evaluación</span>
-              <b>{gestion.avance}%</b>
-            </div>
-            <div className="gestion-progress-track">
-              <div style={{ width: `${gestion.avance}%` }} />
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Top vehículos + tabla de recientes */}

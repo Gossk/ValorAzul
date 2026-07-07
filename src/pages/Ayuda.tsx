@@ -1,83 +1,174 @@
-import { useMemo, useState } from 'react';
+// src/pages/Ayuda.tsx
+// Centro de ayuda para CLIENTES.
+// - FAQs ampliadas y orientadas 100% al cliente (cómo usar la app).
+// - Libro de reclamaciones funcional (guarda en Firestore).
+// - Se eliminó el bloque de "chat en vivo" (fuera de alcance).
+import { useMemo, useState } from 'react'
 import {
   BookOpen,
+  Calculator,
+  CheckCircle2,
   ChevronDown,
   Clock,
   CreditCard,
   FileText,
+  Info,
   Mail,
-  MessageCircle,
   Phone,
   Search,
-  Settings,
+  ShieldCheck,
   UserCircle,
-} from 'lucide-react';
-
-import './Ayuda.css';
+} from 'lucide-react'
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { db } from '../firebaseConfig'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../components/Toast'
+import './Ayuda.css'
 
 interface Faq {
-  pregunta: string;
-  respuesta: string;
+  pregunta: string
+  respuesta: string
 }
 
 interface Categoria {
-  id: string;
-  nombre: string;
-  icon: typeof CreditCard;
-  faqs: Faq[];
+  id: string
+  nombre: string
+  icon: typeof CreditCard
+  faqs: Faq[]
 }
 
 const categorias: Categoria[] = [
   {
-    id: 'creditos',
-    nombre: 'Créditos',
-    icon: CreditCard,
+    id: 'simulador',
+    nombre: 'Simulador y créditos',
+    icon: Calculator,
     faqs: [
-      { pregunta: '¿Cómo simulo un crédito vehicular?', respuesta: 'Ingresa a la sección Simulador, completa el precio del vehículo, la inicial, el plazo y la tasa de interés. El sistema calculará la cuota mensual al instante.' },
-      { pregunta: '¿Cuál es la tasa de interés aplicada?', respuesta: 'La tasa de interés (TEA) varía según el perfil del cliente y la entidad financiera, generalmente entre 14% y 22% anual.' },
-      { pregunta: '¿Puedo cambiar el plazo de mi crédito?', respuesta: 'Sí, puedes elegir entre 12, 24, 36, 48 o 60 meses al momento de simular o renegociar tu crédito.' },
-      { pregunta: '¿Qué pasa si mi crédito es rechazado?', respuesta: 'Puedes revisar las observaciones en el historial y volver a postular ajustando el monto, la inicial o el plazo.' },
+      { pregunta: '¿Cómo simulo un crédito vehicular?', respuesta: 'Entra a la sección Simulador, busca tu vehículo en el catálogo (el precio se llena solo), indica la cuota inicial, el plazo y la tasa. Al pulsar "Simular" ves la cuota mensual, la TCEA y el cronograma al instante.' },
+      { pregunta: '¿Cuál es la cuota inicial mínima?', respuesta: 'El 10% del precio del vehículo (0.10 en formato decimal o 10% en porcentaje). No puede ser igual ni mayor al 100%.' },
+      { pregunta: '¿Qué plazos puedo elegir?', respuesta: 'Entre 6 y 60 meses (hasta 5 años). Puedes ingresarlo en meses o en años.' },
+      { pregunta: '¿Qué es la TEA y la TCEA?', respuesta: 'La TEA es la Tasa Efectiva Anual (el costo de la tasa). La TCEA es el costo efectivo real, porque además incluye seguros y gastos. Ambas se muestran en los resultados.' },
+      { pregunta: '¿Qué es el periodo de gracia?', respuesta: 'Son meses donde pagas menos: "Gracia total" (no pagas nada y los intereses se suman al saldo) o "Gracia parcial" (solo intereses y seguros). Puedes elegir de 1 a 6 meses.' },
+      { pregunta: '¿Puedo simular en dólares?', respuesta: 'Sí. Elige la moneda Dólares ($) e ingresa el tipo de cambio (entre 3.00 y 5.00) para convertir los montos a soles.' },
+      { pregunta: '¿Qué seguros se incluyen en la simulación?', respuesta: 'El seguro de desgravamen (mensual) y el seguro vehicular (anual). Ambos se suman a tu cuota y al total a pagar.' },
+      { pregunta: '¿Qué son el VAN y la TIR?', respuesta: 'Son indicadores financieros: el VAN te ayuda a ver si el crédito "conviene" (si es positivo, suele ser favorable) y la TIR representa la rentabilidad mensual de la operación.' },
     ],
   },
   {
-    id: 'documentos',
-    nombre: 'Documentos',
+    id: 'mis-simulaciones',
+    nombre: 'Mis Simulaciones',
     icon: FileText,
     faqs: [
-      { pregunta: '¿Qué documentos necesito para registrar un cliente?', respuesta: 'DNI vigente, recibo de servicios, y comprobantes de ingresos (boletas de pago o declaración de impuestos).' },
-      { pregunta: '¿Cómo genero el PDF de una simulación?', respuesta: 'En la sección Simulador, después de calcular la cuota, haz clic en "Generar PDF" para descargar el resumen.' },
-      { pregunta: '¿Puedo editar los datos de un cliente ya registrado?', respuesta: 'Sí, desde Clientes selecciona el cliente y usa el botón de editar en el panel de detalle.' },
-      { pregunta: '¿Dónde se guardan las simulaciones realizadas?', respuesta: 'Todas las simulaciones guardadas aparecen en la sección Historial, junto con su estado y fecha.' },
+      { pregunta: '¿Dónde se guardan mis simulaciones?', respuesta: 'En "Mis Simulaciones", accesible desde el menú. Solo tú puedes verlas.' },
+      { pregunta: '¿Cómo reviso una simulación guardada?', respuesta: 'Entra a Mis Simulaciones y abre el detalle para ver el resumen, el cronograma de pagos y el estado.' },
+      { pregunta: '¿Puedo volver a abrir una simulación en el simulador?', respuesta: 'Sí. Desde Mis Simulaciones usa "Reabrir" y se cargan todos los datos en el Simulador para que los ajustes.' },
+      { pregunta: '¿Puedo comparar varias simulaciones?', respuesta: 'Guarda varias y compáralas en Mis Simulaciones cambiando la cuota inicial, el plazo o la tasa para decidir la mejor opción.' },
+      { pregunta: '¿Puedo borrar una simulación?', respuesta: 'Sí, desde Mis Simulaciones puedes eliminar las que ya no necesites.' },
+      { pregunta: '¿Por qué mi simulación dice "Guardada"?', respuesta: 'Porque la guardaste tú. El administrador la evaluará y podrá cambiar el estado a En evaluación, Aprobada o Rechazada.' },
     ],
   },
   {
     id: 'cuenta',
-    nombre: 'Cuenta',
+    nombre: 'Mi cuenta y perfil',
     icon: UserCircle,
     faqs: [
-      { pregunta: '¿Cómo cambio mi contraseña?', respuesta: 'Ve a Configuración > Seguridad y selecciona "Cambiar contraseña".' },
-      { pregunta: '¿Cómo actualizo mi foto de perfil?', respuesta: 'En Configuración > Perfil puedes subir una nueva foto y actualizar tus datos personales.' },
-      { pregunta: '¿Puedo tener varias sesiones activas?', respuesta: 'Sí, puedes revisar y cerrar sesiones activas desde Configuración > Seguridad.' },
-      { pregunta: '¿Cómo solicito un nuevo usuario para mi equipo?', respuesta: 'Los administradores pueden crear nuevos usuarios desde la sección Usuarios.' },
+      { pregunta: '¿Cómo me registro?', respuesta: 'En "Registrarme" completa tus datos y crea tu cuenta con tu correo electrónico.' },
+      { pregunta: '¿Olvidé mi contraseña, cómo la recupero?', respuesta: 'En la pantalla de inicio de sesión usa "¿Olvidaste tu contraseña?" y sigue las instrucciones del correo de recuperación.' },
+      { pregunta: '¿Cómo actualizo mis datos?', respuesta: 'En "Mi Perfil" puedes editar tu nombre y datos de contacto; los cambios se guardan al instante.' },
+      { pregunta: '¿Cómo cierro sesión?', respuesta: 'Desde el menú lateral, usa "Cerrar sesión" al final de la lista.' },
+      { pregunta: '¿Puedo tener la sesión abierta en varios dispositivos?', respuesta: 'Sí, puedes iniciar sesión en más de un dispositivo. Recuerda cerrar sesión en equipos que no sean tuyos.' },
     ],
   },
   {
-    id: 'tecnico',
-    nombre: 'Técnico',
-    icon: Settings,
+    id: 'pagos',
+    nombre: 'Pagos y seguros',
+    icon: CreditCard,
     faqs: [
-      { pregunta: 'La aplicación no carga, ¿qué hago?', respuesta: 'Verifica tu conexión a internet, recarga la página y limpia la caché del navegador.' },
-      { pregunta: '¿Es compatible con dispositivos móviles?', respuesta: 'Sí, la plataforma es totalmente responsive y se adapta a celulares y tablets.' },
-      { pregunta: '¿Cómo reporto un error del sistema?', respuesta: 'Usa el chat en vivo o escríbenos a soporte@valorazul.com detallando el problema encontrado.' },
-      { pregunta: '¿Mis datos están protegidos?', respuesta: 'Sí, toda la información se transmite de forma encriptada y se almacena en servidores seguros.' },
+      { pregunta: '¿Qué es el monto financiado?', respuesta: 'Es el precio del vehículo menos tu cuota inicial. Es la base sobre la que se calculan los intereses.' },
+      { pregunta: '¿Qué incluye el "Total a pagar"?', respuesta: 'La suma de todas las cuotas, los intereses, los seguros y los costos iniciales (notariales, registrales, tasación y otros).' },
+      { pregunta: '¿Qué es el seguro de desgravamen?', respuesta: 'Cubre la deuda en caso de fallecimiento o invalidez. Se paga mensualmente y se refleja en tu cuota.' },
+      { pregunta: '¿Qué es el seguro vehicular?', respuesta: 'Cubre daños al vehículo. Se cobra anualmente e influye en el total a pagar de la simulación.' },
+      { pregunta: '¿La cuota mensual puede cambiar?', respuesta: 'En la simulación es fija según los datos que ingreses. En un crédito real depende de tu entidad financiera y del tipo de periodo de gracia elegido.' },
     ],
   },
-];
+  {
+    id: 'seguridad',
+    nombre: 'Seguridad y privacidad',
+    icon: ShieldCheck,
+    faqs: [
+      { pregunta: '¿Mis datos están protegidos?', respuesta: 'Sí. Toda la información viaja encriptada y se almacena de forma privada en tu cuenta.' },
+      { pregunta: '¿Quién puede ver mis simulaciones?', respuesta: 'Solo tú y el administrador del sistema (para poder evaluarlas y darles seguimiento).' },
+      { pregunta: '¿Valor Azul vende mis datos?', respuesta: 'No. Tus datos se usan únicamente para tu simulación y la gestión dentro del proyecto.' },
+      { pregunta: '¿Cómo protejo mi cuenta?', respuesta: 'Usa una contraseña segura, no la compartas y cierra sesión en equipos compartidos o públicos.' },
+    ],
+  },
+  {
+    id: 'proyecto',
+    nombre: 'Proyecto y soporte',
+    icon: Info,
+    faqs: [
+      { pregunta: '¿Qué es Valor Azul?', respuesta: 'Es un simulador de crédito vehicular desarrollado como proyecto universitario experimental para ayudarte a entender y planificar tu financiamiento.' },
+      { pregunta: '¿Las simulaciones son una aprobación real de crédito?', respuesta: 'No. Son estimaciones basadas en los datos que ingresas. La aprobación real depende de una entidad financiera.' },
+      { pregunta: '¿Cómo reporto un error o dejo una sugerencia?', respuesta: 'Usa el Libro de reclamaciones de esta misma página o escríbenos a soporte@valorazul.com.' },
+      { pregunta: '¿Tienen atención por teléfono?', respuesta: 'Sí, en horario de lunes a viernes (ver la sección Contáctanos). Como es un proyecto académico, el soporte es limitado.' },
+    ],
+  },
+]
 
 function Ayuda() {
-  const [search, setSearch] = useState('');
-  const [categoriaActiva, setCategoriaActiva] = useState<string>('todas');
-  const [openFaq, setOpenFaq] = useState<string | null>(null);
+  const { perfil, user } = useAuth()
+  const { showToast } = useToast()
+
+  const [search, setSearch] = useState('')
+  const [categoriaActiva, setCategoriaActiva] = useState<string>('todas')
+  const [openFaq, setOpenFaq] = useState<string | null>(null)
+
+  // ── Libro de reclamaciones ──
+  const [reclamo, setReclamo] = useState({ tipo: 'Reclamo', asunto: '', descripcion: '' })
+  const [enviando, setEnviando] = useState(false)
+  const [enviado, setEnviado]   = useState(false)
+
+  const enviarReclamo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!reclamo.asunto.trim() || !reclamo.descripcion.trim()) {
+      showToast({
+        type: 'error',
+        title: 'Faltan datos',
+        message: 'Completa el asunto y la descripción de tu reclamo.',
+      })
+      return
+    }
+    setEnviando(true)
+    try {
+      await addDoc(collection(db, 'reclamaciones'), {
+        uid:         user?.uid ?? '',
+        nombre:      perfil?.nombre ?? '',
+        email:       perfil?.email ?? '',
+        tipo:        reclamo.tipo,
+        asunto:      reclamo.asunto.trim(),
+        descripcion: reclamo.descripcion.trim(),
+        estado:      'Pendiente',
+        fecha:       new Date().toLocaleDateString('es-PE'),
+        creadoEn:    Date.now(),
+        creadoEnServer: serverTimestamp(),
+      })
+      setEnviado(true)
+      setReclamo({ tipo: 'Reclamo', asunto: '', descripcion: '' })
+      showToast({
+        type: 'success',
+        title: 'Reclamo registrado',
+        message: 'Hemos recibido tu reclamo. Te contactaremos pronto.',
+      })
+    } catch (err: any) {
+      console.error(err)
+      showToast({
+        type: 'error',
+        title: 'No se pudo enviar',
+        message: err?.message || 'Ocurrió un error. Intenta nuevamente.',
+      })
+    } finally {
+      setEnviando(false)
+    }
+  }
 
   const faqsFiltradas = useMemo(() => {
     return categorias
@@ -86,14 +177,14 @@ function Ayuda() {
         ...cat,
         faqs: cat.faqs.filter((f) => f.pregunta.toLowerCase().includes(search.toLowerCase())),
       }))
-      .filter((cat) => cat.faqs.length > 0);
-  }, [search, categoriaActiva]);
+      .filter((cat) => cat.faqs.length > 0)
+  }, [search, categoriaActiva])
 
   return (
     <>
       <div className="ayuda-hero glass-card fade-in">
         <h1>¿En qué podemos ayudarte?</h1>
-        <p>Encuentra respuestas rápidas sobre créditos, documentos, tu cuenta y soporte técnico.</p>
+        <p>Encuentra respuestas sobre el simulador, tus simulaciones, pagos, tu cuenta y tu seguridad.</p>
         <div className="ayuda-search">
           <Search size={18} />
           <input
@@ -115,7 +206,7 @@ function Ayuda() {
         </button>
 
         {categorias.map((cat) => {
-          const Icon = cat.icon;
+          const Icon = cat.icon
           return (
             <button
               key={cat.id}
@@ -126,7 +217,7 @@ function Ayuda() {
               <strong>{cat.nombre}</strong>
               <span>{cat.faqs.length} preguntas</span>
             </button>
-          );
+          )
         })}
       </div>
 
@@ -135,8 +226,8 @@ function Ayuda() {
           <div className="panel glass-card faq-category fade-in" key={cat.id}>
             <h3>{cat.nombre}</h3>
             {cat.faqs.map((faq) => {
-              const key = `${cat.id}-${faq.pregunta}`;
-              const open = openFaq === key;
+              const key = `${cat.id}-${faq.pregunta}`
+              const open = openFaq === key
               return (
                 <div className={`faq-item ${open ? 'open' : ''}`} key={key}>
                   <button className="faq-question" onClick={() => setOpenFaq(open ? null : key)}>
@@ -145,7 +236,7 @@ function Ayuda() {
                   </button>
                   {open && <p className="faq-answer">{faq.respuesta}</p>}
                 </div>
-              );
+              )
             })}
           </div>
         ))}
@@ -158,14 +249,71 @@ function Ayuda() {
       </div>
 
       <div className="panel glass-card reclamos-panel fade-in">
-        <div className="reclamos-icon"><BookOpen size={28} /></div>
-        <div>
-          <h3>Libro de reclamaciones</h3>
-          <p>
-            Disponible únicamente para clientes. Registra aquí reclamos o quejas relacionados con el uso experimental de Valor Azul en el proyecto universitario.
-          </p>
+        <div className="reclamos-head">
+          <div className="reclamos-icon"><BookOpen size={28} /></div>
+          <div>
+            <h3>Libro de reclamaciones</h3>
+            <p>
+              ¿Tuviste un problema o tienes una queja? Regístrala aquí. Disponible para
+              clientes del proyecto experimental Valor Azul.
+            </p>
+          </div>
         </div>
-        <button className="btn btn-primary">Registrar reclamo</button>
+
+        {enviado ? (
+          <div className="reclamos-exito">
+            <div className="reclamos-exito-icon"><CheckCircle2 size={42} /></div>
+            <h4>¡Reporte enviado con éxito!</h4>
+            <p>Hemos recibido tu reclamo. Nuestro equipo lo revisará y te contactará pronto.</p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setEnviado(false)}
+            >
+              Enviar otro reclamo
+            </button>
+          </div>
+        ) : (
+          <form className="reclamos-form" onSubmit={enviarReclamo}>
+            <div className="reclamos-row">
+              <label className="reclamos-tipo">
+                <span>Tipo</span>
+                <select
+                  value={reclamo.tipo}
+                  onChange={(e) => setReclamo({ ...reclamo, tipo: e.target.value })}
+                >
+                  <option value="Reclamo">Reclamo</option>
+                  <option value="Queja">Queja</option>
+                </select>
+              </label>
+              <label className="reclamos-asunto">
+                <span>Asunto</span>
+                <input
+                  type="text"
+                  value={reclamo.asunto}
+                  onChange={(e) => setReclamo({ ...reclamo, asunto: e.target.value })}
+                  placeholder="Ej: Error al simular"
+                  maxLength={80}
+                />
+              </label>
+            </div>
+            <label>
+              <span>Descripción</span>
+              <textarea
+                rows={3}
+                value={reclamo.descripcion}
+                onChange={(e) => setReclamo({ ...reclamo, descripcion: e.target.value })}
+                placeholder="Cuéntanos qué ocurrió..."
+                maxLength={600}
+              />
+            </label>
+            <div className="reclamos-actions">
+              <button type="submit" className="btn btn-primary" disabled={enviando}>
+                {enviando ? 'Enviando…' : 'Enviar reclamo'}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       <div className="contacto-grid fade-in">
@@ -193,16 +341,9 @@ function Ayuda() {
             </div>
           </div>
         </div>
-
-        <div className="panel glass-card chat-panel">
-          <MessageCircle size={36} className="glow chat-icon" />
-          <h3>¿Necesitas ayuda inmediata?</h3>
-          <p>Nuestro equipo de soporte está disponible para resolver tus dudas en tiempo real.</p>
-          <button className="btn btn-primary">Iniciar chat en vivo</button>
-        </div>
       </div>
     </>
-  );
+  )
 }
 
-export default Ayuda;
+export default Ayuda

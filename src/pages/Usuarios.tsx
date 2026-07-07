@@ -2,19 +2,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Loader2,
-  Plus,
   Search,
   ShieldAlert,
-  UserPlus,
-  X,
 } from 'lucide-react'
 import { collection, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from '../firebaseConfig'
 import { useAuth } from '../context/AuthContext'
-import {
-  cambiarEstadoActivo,
-  crearAdministrador,
-} from '../lib/adminUsers'
+import { cambiarEstadoActivo } from '../lib/adminUsers'
 import './Usuarios.css'
 
 type Rol = 'Cliente' | 'Administrador'
@@ -37,13 +31,6 @@ function Usuarios() {
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState('')
   const [busqueda, setBusqueda] = useState('')
-
-  // Modal de creación
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ nombre: '', email: '', password: '' })
-  const [creando, setCreando]     = useState(false)
-  const [creadoOk, setCreadoOk]   = useState('')
-  const [creadoErr, setCreadoErr] = useState('')
 
   // Acciones por fila
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -207,28 +194,6 @@ function Usuarios() {
     }
   }
 
-  // -------- Modal crear admin --------
-  const abrirModal = () => {
-    setForm({ nombre: '', email: '', password: '' })
-    setCreadoErr(''); setCreadoOk('')
-    setModalOpen(true)
-  }
-
-  const submitCrear = async () => {
-    setCreadoErr(''); setCreadoOk('')
-    setCreando(true)
-    try {
-      await crearAdministrador(form)
-      setCreadoOk(`Administrador "${form.nombre}" creado correctamente.`)
-      await cargar()  // refresca lista
-      setForm({ nombre: '', email: '', password: '' })
-    } catch (err: any) {
-      setCreadoErr(err?.message || 'No se pudo crear el administrador.')
-    } finally {
-      setCreando(false)
-    }
-  }
-
   return (
     <>
       <div className="usuarios-header">
@@ -248,9 +213,6 @@ function Usuarios() {
               onChange={(e) => setBusqueda(e.target.value)}
             />
           </div>
-          <button className="btn-primary-users" onClick={abrirModal}>
-            <UserPlus size={16} /> Nuevo administrador
-          </button>
         </div>
       </div>
 
@@ -352,84 +314,6 @@ function Usuarios() {
           </div>
         )}
       </div>
-
-      {/* ── Modal: crear administrador ── */}
-      {modalOpen && (
-        <div className="usuarios-modal-backdrop" onClick={() => !creando && setModalOpen(false)}>
-          <div className="usuarios-modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="usuarios-modal-close"
-              onClick={() => !creando && setModalOpen(false)}
-              aria-label="Cerrar"
-            >
-              <X size={18} />
-            </button>
-            <h3 className="usuarios-modal-title">
-              <UserPlus size={18} /> Nuevo administrador
-            </h3>
-            <p className="usuarios-modal-desc">
-              Se creará una cuenta en Firebase Authentication y un documento
-              con <code>rol: 'Administrador'</code> en <code>usuarios/{'{uid}'}</code>.
-              Tu sesión actual no se cerrará.
-            </p>
-
-            <div className="usuarios-modal-form">
-              <label>
-                <span>Nombre completo</span>
-                <input
-                  type="text"
-                  value={form.nombre}
-                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                  placeholder="Ej: Ana Martínez"
-                  disabled={creando}
-                />
-              </label>
-              <label>
-                <span>Correo electrónico</span>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="admin@valorazul.com"
-                  disabled={creando}
-                />
-              </label>
-              <label>
-                <span>Contraseña temporal (mín. 6)</span>
-                <input
-                  type="text"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="Se la darás al nuevo admin"
-                  disabled={creando}
-                />
-              </label>
-
-              {creadoErr && <div className="usuarios-alert error">{creadoErr}</div>}
-              {creadoOk  && <div className="usuarios-alert ok">{creadoOk}</div>}
-
-              <div className="usuarios-modal-actions">
-                <button
-                  className="btn-secondary-users"
-                  onClick={() => setModalOpen(false)}
-                  disabled={creando}
-                >
-                  Cerrar
-                </button>
-                <button
-                  className="btn-primary-users"
-                  onClick={submitCrear}
-                  disabled={creando}
-                >
-                  {creando
-                    ? (<><Loader2 size={14} className="spin" /> Creando...</>)
-                    : (<><Plus size={14} /> Crear administrador</>)}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

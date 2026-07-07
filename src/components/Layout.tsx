@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Bell,
   ChevronsLeft,
   ChevronsRight,
   LogOut,
-  Menu,
-  X,
 } from 'lucide-react';
 
 import { useAuth, type Rol } from '../context/AuthContext';
@@ -17,6 +14,7 @@ import {
   pageTitles,
   type NavItem,
 } from './navConfig';
+import BottomNav from './BottomNav';
 import './Layout.css';
 
 /**
@@ -68,7 +66,6 @@ function Layout() {
   const { perfil, logout } = useAuth();
   const { title, subtitle } = pageTitles[location.pathname] ?? { title: '', subtitle: '' };
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Datos "en vivo" del usuario. Si aún no cargó el perfil, se usan defaults.
@@ -191,6 +188,9 @@ function Layout() {
   const visibleMainNav   = filtrarPorRol(mainNav,   perfil?.rol);
   const visibleConfigNav = filtrarPorRol(configNav, perfil?.rol);
 
+  // Pestañas inferiores para móvil (reemplazan el ícono de menú del topbar).
+  const bottomItems = [...visibleMainNav, ...visibleConfigNav];
+
   const renderLink = (item: NavItem) => {
     const Icon = item.icon;
     const active = location.pathname === item.to;
@@ -200,7 +200,6 @@ function Layout() {
         to={item.to}
         className={active ? 'active' : ''}
         data-tooltip={item.label}
-        onClick={() => setMobileOpen(false)}
       >
         <Icon size={18} />
         <span className="link-label">{item.label}</span>
@@ -226,7 +225,7 @@ function Layout() {
       />
 
       <div className={`app-layout ${collapsed ? 'sidebar-collapsed' : ''}`}>
-        <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
+        <aside className="sidebar">
           <div>
             <div className="brand">
               <div className="logo-container">
@@ -245,9 +244,6 @@ function Layout() {
                   <span className="logo-sub">AZUL</span>
                 </div>
               </div>
-              <button className="mobile-close" onClick={() => setMobileOpen(false)}>
-                <X size={20} />
-              </button>
             </div>
 
             <p className="menu-title">PRINCIPAL</p>
@@ -281,32 +277,20 @@ function Layout() {
           </div>
         </aside>
 
-        {mobileOpen && <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
-
         <main className="main">
           <header className="header">
             <div className="header-left">
-              <button className="icon-btn menu-toggle" onClick={() => setMobileOpen(true)}>
-                <Menu size={22} />
-              </button>
               <div>
                 <h1>{title}</h1>
                 <p>{subtitle}</p>
               </div>
             </div>
-
-            <div className="header-actions">
-              <button className="icon-btn">
-                <Bell size={20} />
-                <span className="ping"></span>
-              </button>
-              <div className="admin-avatar">{currentName.charAt(0).toUpperCase()}</div>
-              <span className="header-user">{currentName}</span>
-            </div>
           </header>
 
           <div className="page-content"><Outlet /></div>
         </main>
+
+        <BottomNav items={bottomItems} />
       </div>
     </>
   );

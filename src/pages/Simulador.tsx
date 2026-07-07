@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  Car, Menu, Calculator,
+  Car, Calculator,
   TrendingUp, DollarSign, BarChart2, Calendar,
-  AlertCircle, Search, Percent, Save, LogOut, X,
+  AlertCircle, Search, Percent, Save, LogOut,
 } from 'lucide-react'
 import { addDoc, collection, doc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from '../firebaseConfig'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../components/Toast'
 import {
   configNav,
   filtrarPorRol,
   mainNav,
 } from '../components/navConfig'
+import BottomNav from '../components/BottomNav'
 import './Dashboard.css'
 import './Simulador.css'
 
@@ -202,15 +204,16 @@ export default function Simulador() {
   const navigate = useNavigate()
   const location = useLocation()
   const { perfil, user, logout } = useAuth()
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const { showToast } = useToast()
 
   // Menú compartido con el Layout principal (mismo aspecto en toda la app)
   const visibleMain   = filtrarPorRol(mainNav,   perfil?.rol)
   const visibleConfig = filtrarPorRol(configNav, perfil?.rol)
+  // Pestañas inferiores para móvil (reemplazan el ícono de menú del topbar)
+  const bottomItems   = [...visibleMain, ...visibleConfig]
 
   // Estado del guardado en Firestore
   const [guardando,   setGuardando]   = useState(false)
-  const [guardadoMsg, setGuardadoMsg] = useState('')
 
   // — Buscador de vehículo (lupa + autocompletado) —
   const [busquedaVehiculo,     setBusquedaVehiculo]     = useState('')
@@ -651,7 +654,6 @@ export default function Simulador() {
     setCronograma(nuevoCron)
     setMostrarResultados(true)
     setActiveTab('resumen')
-    setGuardadoMsg('')
   }
 
   // ── GUARDAR SIMULACIÓN EN FIRESTORE ────────────────────────────────────────
@@ -665,7 +667,6 @@ export default function Simulador() {
   const guardarSimulacion = async () => {
     if (!user?.uid || !resumen) return
     setGuardando(true)
-    setGuardadoMsg('')
     try {
       // 1) Detalle completo del cliente
       const entrada = {
@@ -726,13 +727,22 @@ export default function Simulador() {
         cuotaInicialPct: resumen.cuotaInicialPorc,
       })
 
-      setGuardadoMsg('¡Simulación guardada! Ya aparece en el historial.')
+      // Notificación: indica dónde quedó guardada la simulación.
+      showToast({
+        type: 'success',
+        title: '¡Simulación guardada!',
+        message: 'Tu simulación se guardó en "Mis Simulaciones".',
+        action: { label: 'Ver en Mis Simulaciones', to: '/mis-simulaciones' },
+      })
     } catch (err: any) {
       console.error(err)
-      setGuardadoMsg('Error al guardar: ' + (err?.message || 'intenta más tarde'))
+      showToast({
+        type: 'error',
+        title: 'No se pudo guardar',
+        message: err?.message || 'Ocurrió un error. Intenta nuevamente.',
+      })
     } finally {
       setGuardando(false)
-      setTimeout(() => setGuardadoMsg(''), 4000)
     }
   }
 
@@ -770,10 +780,8 @@ export default function Simulador() {
   return (
     <div className="dashboard-layout">
 
-      {mobileOpen && <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
-
       {/* ── SIDEBAR ── */}
-      <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
+      <aside className="sidebar">
         <div>
           <div className="brand">
             <div className="logo-container">
@@ -792,9 +800,6 @@ export default function Simulador() {
                 <span className="logo-sub">AZUL</span>
               </div>
             </div>
-            <button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="Cerrar menú">
-              <X size={20} />
-            </button>
           </div>
 
           <p className="menu-title">PRINCIPAL</p>
@@ -803,7 +808,7 @@ export default function Simulador() {
               const Icon = item.icon
               const active = location.pathname === item.to
               return (
-                <Link key={item.to} to={item.to} className={active ? 'active' : ''} onClick={() => setMobileOpen(false)}>
+                <Link key={item.to} to={item.to} className={active ? 'active' : ''}>
                   <Icon size={18} /> {item.label}
                 </Link>
               )
@@ -818,9 +823,9 @@ export default function Simulador() {
                   const Icon = item.icon
                   const active = location.pathname === item.to
                   return (
-                    <Link key={item.to} to={item.to} className={active ? 'active' : ''} onClick={() => setMobileOpen(false)}>
-                      <Icon size={18} /> {item.label}
-                    </Link>
+                <Link key={item.to} to={item.to} className={active ? 'active' : ''}>
+                  <Icon size={18} /> {item.label}
+                </Link>
                   )
                 })}
               </nav>
@@ -856,17 +861,10 @@ export default function Simulador() {
 
         <header className="header">
           <div className="header-left">
-            <button className="icon-btn menu-toggle" onClick={() => setMobileOpen(true)} aria-label="Abrir menú">
-              <Menu size={20} />
-            </button>
             <div>
               <h1>Simulador de Crédito</h1>
               <p>Calcula tu financiamiento vehicular</p>
             </div>
-          </div>
-          <div className="header-actions">
-            <div className="admin-avatar">{(perfil?.nombre || 'U').charAt(0).toUpperCase()}</div>
-            <span>{perfil?.nombre || 'Invitado'}</span>
           </div>
         </header>
 
@@ -1242,13 +1240,9 @@ export default function Simulador() {
             </button>
           )}
 
-          {guardadoMsg && (
-            <span style={{
-              fontSize: 13,
-              fontWeight: 500,
-              color: guardadoMsg.startsWith('Error') ? '#fca5a5' : '#86efac',
-            }}>
-              {guardadoMsg}
+          {guardando && (
+            <span style={{ fontSize: 13, fontWeight: 500, color: '#86efac' }}>
+              Guardando…
             </span>
           )}
         </div>
@@ -1407,6 +1401,8 @@ export default function Simulador() {
           </div>
         </>)}
       </main>
+
+      <BottomNav items={bottomItems} />
     </div>
   )
 }
